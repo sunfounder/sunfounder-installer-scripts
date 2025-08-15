@@ -645,10 +645,14 @@ install_soundcard_driver() {
 
     # --- test speaker ---
     newline
-    if confirm "Do you wish to test speaker now?"; then
-        info "testing speaker ..."
-        # test speaker
-        speaker-test -l3 -c2 -t wav
+    if [ $# -gt 0 ] && [ $1 -eq "--skip-test" ]; then 
+        info "skip test speaker"
+    else
+        if confirm "Do you wish to test speaker now?"; then
+            info "testing speaker ..."
+            # test speaker
+            speaker-test -l3 -c2 -t wav
+        fi
     fi
 
     # --- Done ---

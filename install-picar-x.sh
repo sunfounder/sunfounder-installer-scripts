@@ -153,7 +153,7 @@ run "chmod -R 755 /opt/picar-x" "Change permissions of /opt/picar-x to 755"
 log_title "Setup speaker script"
 run "wget -O /opt/picar-x/setup_fusion_hat_speaker.sh https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_speaker.sh" "Download speaker script"
 run "chmod 755 /opt/picar-x/setup_fusion_hat_speaker.sh" "Change permissions of speaker script to 755"
-run "/opt/picar-x/setup_fusion_hat_speaker.sh" "Setup speaker script"
+run "/opt/picar-x/setup_fusion_hat_speaker.sh --skip-test" "Setup speaker script"
 
 # Install picar-x-app
 log_title "Install picar-x-app"
