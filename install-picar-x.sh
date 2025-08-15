@@ -12,7 +12,7 @@ log() {
 }
 
 log_title() {
-    echo -e "\033[33m[ $1 ]\033[0m"
+    echo -e "\033[34m$1\033[0m"
     echo "[$1]" >> $LOG_FILE
 }
 
@@ -138,6 +138,7 @@ fi
 # Install picar-x
 log_title "Install picar-x"
 cd $HOME
+run "rm -rf $HOME/picar-x" "Remove $HOME/picar-x if exist"
 run "git clone -b 3.0.x --depth=1 https://github.com/sunfounder/picar-x.git" "Clone picar-x"
 if [ $? -eq 0 ]; then
     cd $HOME/picar-x
