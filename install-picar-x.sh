@@ -121,6 +121,7 @@ run "sudo apt-get install -y git python3 python3-pip python3-dev python3-venv py
 # Install fusion-hat
 log_title "Install fusion-hat"
 cd $HOME
+run "rm -rf $HOME/fusion-hat" "Remove fusion-hat if exists"
 run "git clone -b 1.1.x --depth=1 https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat"
 if [ $? -eq 0 ]; then
     cd $HOME/fusion-hat
