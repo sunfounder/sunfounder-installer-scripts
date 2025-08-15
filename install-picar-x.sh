@@ -110,6 +110,8 @@ if [ "$#" -eq 1  ]; then
     fi
 fi
 
+log_title "Install PiCar-X\n"
+
 # Install dependencies
 log_title "Install dependencies"
 run "sudo apt-get update" "Update apt"
