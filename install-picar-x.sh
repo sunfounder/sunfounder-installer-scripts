@@ -19,6 +19,12 @@ log_title() {
 ERROR_HAPPENED=false
 ERROR_LOGS=""
 
+cleanup() {
+    log_title "Cleanup"
+    run "rm -rf $HOME/fusion-hat" "Remove fusion-hat if exists"
+    run "rm -rf $HOME/vilib" "Remove vilib if exists"
+}
+
 # Ctrl+C信号处理函数
 handle_interrupt() {
     # 恢复光标（如果之前隐藏了）
@@ -31,6 +37,7 @@ handle_interrupt() {
     else
         echo -e "\n\033[33mUser canceled.\033[0m"
     fi
+    cleanup
     exit 1
 }
 
@@ -112,50 +119,29 @@ run "sudo apt-get install -y git python3 python3-pip python3-dev python3-venv py
 # Install fusion-hat
 log_title "Install fusion-hat"
 cd $HOME
-if [ "$FORCE_REINSTALL" = true ]; then
-    run "rm -rf $HOME/fusion-hat" "Remove fusion-hat if exists"
-fi
-if [ -d "$HOME/fusion-hat" ]; then
-    log "$SUCCESS fusion-hat already installed, skip"
-else
-    run "git clone -b 1.1.x --depth=1 https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat"
-    if [ $? -eq 0 ]; then
-        cd $HOME/fusion-hat
-        run "python3 install.py" "Install fusion-hat"
-    fi
+run "git clone -b 1.1.x --depth=1 https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat"
+if [ $? -eq 0 ]; then
+    cd $HOME/fusion-hat
+    run "python3 install.py" "Install fusion-hat"
 fi
 
 # Install vilib
 log_title "Install vilib"
 cd $HOME
-if [ "$FORCE_REINSTALL" = true ]; then
-    run "rm -rf $HOME/vilib" "Remove vilib if exists"
-fi
-if [ -d "$HOME/vilib" ]; then
-    log "$SUCCESS vilib already installed, skip"
-else
-    run "rm -rf $HOME/vilib" "Remove vilib if exists"
-    run "git clone --depth=1 https://github.com/sunfounder/vilib.git" "Clone vilib"
-    if [ $? -eq 0 ]; then
-        cd $HOME/vilib
-        run "python3 install.py" "Install vilib"
-    fi
+run "rm -rf $HOME/vilib" "Remove vilib if exists"
+run "git clone --depth=1 https://github.com/sunfounder/vilib.git" "Clone vilib"
+if [ $? -eq 0 ]; then
+    cd $HOME/vilib
+    run "python3 install.py" "Install vilib"
 fi
 
 # Install picar-x
 log_title "Install picar-x"
 cd $HOME
-if [ "$FORCE_REINSTALL" = true ]; then
-    run "rm -rf $HOME/picar-x" "Remove picar-x if exists"
-fi
-if [ -d "$HOME/picar-x" ]; then
-    log "$SUCCESS picar-x already installed, skip"
-else
-    run "git clone -b 3.0.x --depth=1 https://github.com/sunfounder/picar-x.git" "Clone picar-x"
-    if [ $? -eq 0 ]; then
-        cd $HOME/picar-x
-        run "pip3 install ./ --break-system-packages" "Install picar-x"
-    fi
+run "git clone -b 3.0.x --depth=1 https://github.com/sunfounder/picar-x.git" "Clone picar-x"
+if [ $? -eq 0 ]; then
+    cd $HOME/picar-x
+    run "pip3 install ./ --break-system-packages" "Install picar-x"
 fi
 
 # Create dir for config
@@ -186,6 +172,8 @@ run "systemctl enable picar-x-app.service" "Enable picar-x-app service"
 run "systemctl daemon-reload" "Reload systemd daemon"
 run "systemctl start picar-x-app.service" "Start picar-x-app service"
 log "picar-x-app installed"
+
+cleanup
 
 if [ "$ERROR_HAPPENED" = false ]; then
     log "$SUCCESS Install finished. Remember to run sudo /opt/picar-x/setup_fusion_hat_speaker.sh to enable speaker after reboot."
