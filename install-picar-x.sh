@@ -47,6 +47,8 @@ fi
 USERNAME=$(getent passwd 1000 | cut -d: -f1)
 HOME=$(getent passwd 1000 | cut -d: -f6)
 FORCE_REINSTALL=false
+SUCCESS="\033[32m[✓]\033[0m"
+FAILED="\033[31m[✗]\033[0m"
 
 run() {
     local cmd="$1"
@@ -78,10 +80,10 @@ run() {
     tput cnorm
     
     if [ $result -eq 0 ]; then
-        printf "\r\033[32m[✓]\033[0m %s\n" "$info"
+        printf "\r$SUCCESS %s\n" "$info"
         echo "[✓] $info" >> $LOG_FILE
     else
-        printf "\r\033[31m[✗]\033[0m %s\n" "$info"
+        printf "\r$FAILED %s\n" "$info"
         ERROR_HAPPENED=true
         ERROR_LOGS+=`cat /tmp/cmd_output.log`
         echo "[✗] $info" >> $LOG_FILE
@@ -114,7 +116,7 @@ if [ "$FORCE_REINSTALL" = true ]; then
     run "rm -rf $HOME/fusion-hat" "Remove fusion-hat if exists"
 fi
 if [ -d "$HOME/fusion-hat" ]; then
-    log "\033[36m[✓]\033[0m fusion-hat already installed, skip"
+    log "$SUCCESS fusion-hat already installed, skip"
 else
     run "git clone -b 1.1.x --depth=1 https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat"
     if [ $? -eq 0 ]; then
@@ -130,7 +132,7 @@ if [ "$FORCE_REINSTALL" = true ]; then
     run "rm -rf $HOME/vilib" "Remove vilib if exists"
 fi
 if [ -d "$HOME/vilib" ]; then
-    log "\033[36m[✓]\033[0m vilib already installed, skip"
+    log "$SUCCESS vilib already installed, skip"
 else
     run "rm -rf $HOME/vilib" "Remove vilib if exists"
     run "git clone --depth=1 https://github.com/sunfounder/vilib.git" "Clone vilib"
@@ -147,7 +149,7 @@ if [ "$FORCE_REINSTALL" = true ]; then
     run "rm -rf $HOME/picar-x" "Remove picar-x if exists"
 fi
 if [ -d "$HOME/picar-x" ]; then
-    log "\033[36m[✓]\033[0m picar-x already installed, skip"
+    log "$SUCCESS picar-x already installed, skip"
 else
     run "git clone -b 3.0.x --depth=1 https://github.com/sunfounder/picar-x.git" "Clone picar-x"
     if [ $? -eq 0 ]; then
@@ -160,6 +162,12 @@ fi
 run "mkdir -p /opt/picar-x" "Create dir for config"
 run "chown -R $USERNAME:$USERNAME /opt/picar-x" "Change ownership of /opt/picar-x to $USERNAME:$USERNAME"
 run "chmod -R 755 /opt/picar-x" "Change permissions of /opt/picar-x to 755"
+
+# Setup speaker script
+log_title "Setup speaker script"
+run "wget -O /opt/picar-x/setup_fusion_hat_speaker.sh https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_speaker.sh" "Download speaker script"
+run "chmod 755 /opt/picar-x/setup_fusion_hat_speaker.sh" "Change permissions of speaker script to 755"
+run "/opt/picar-x/setup_fusion_hat_speaker.sh" "Setup speaker script"
 
 # Install picar-x-app
 log_title "Install picar-x-app"
@@ -180,9 +188,17 @@ run "systemctl start picar-x-app.service" "Start picar-x-app service"
 log "picar-x-app installed"
 
 if [ "$ERROR_HAPPENED" = false ]; then
-    log "Finished"
+    log "$SUCCESS Install finished. Remember to run sudo /opt/picar-x/setup_fusion_hat_speaker.sh to enable speaker after reboot."
+    # prompt reboot
+    read -p "Do you want to reboot now? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        log "$SUCCESS Rebooting..."
+        sleep 1
+        reboot
+    fi
 else
-    echo "Error happened: $ERROR_LOGS"
-    echo "Please check $LOG_FILE for more details."
+    echo -e "$FAILED Error happened: $ERROR_LOGS"
+    echo -e "$FAILED Please check $LOG_FILE for more details."
     exit 1
 fi
