@@ -2,9 +2,10 @@
 
 # global variables
 # =================================================================
-VERSION="0.0.7"
+VERSION="0.0.8"
 USERNAME=${SUDO_USER:-$LOGNAME}
 USER_RUN="sudo -u ${USERNAME} env XDG_RUNTIME_DIR=/run/user/$(id -u ${USERNAME})"
+SKIP_TEST=false
 
 CONFIG="/boot/firmware/config.txt"
 # Fall back to the old config.txt path
@@ -418,7 +419,7 @@ check_hat() {
 # main_fuction
 # ================================================================================
 install_soundcard_driver() {
-    info "install hat soundcard driver >>>"
+    info "Setup Fusion Hat audio driver >>>"
     info "script version: $VERSION"
     info "user: $USERNAME"
 
@@ -645,9 +646,7 @@ install_soundcard_driver() {
 
     # --- test speaker ---
     newline
-    if [ $# -gt 0 ] && [ $1 -eq "--skip-test" ]; then 
-        info "skip test speaker"
-    else
+    if [ "$SKIP_TEST" = "false" ]; then
         if confirm "Do you wish to test speaker now?"; then
             info "testing speaker ..."
             # test speaker
@@ -667,6 +666,9 @@ for arg in "$@"; do
     case $arg in
     --no-deps)
         _is_install_deps=false
+        ;;
+    --skip-test)
+        SKIP_TEST=true
         ;;
     esac
 done
