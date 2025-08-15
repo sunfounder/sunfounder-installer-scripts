@@ -153,11 +153,11 @@ run "mkdir -p /opt/picar-x" "Create dir for config"
 run "chown -R $USERNAME:$USERNAME /opt/picar-x" "Change ownership of /opt/picar-x to $USERNAME:$USERNAME"
 run "chmod -R 755 /opt/picar-x" "Change permissions of /opt/picar-x to 755"
 
-# Setup speaker script
-log_title "Setup speaker script"
-run "wget -O /opt/picar-x/setup_fusion_hat_speaker.sh https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_speaker.sh" "Download speaker script"
-run "chmod 755 /opt/picar-x/setup_fusion_hat_speaker.sh" "Change permissions of speaker script to 755"
-run "/opt/picar-x/setup_fusion_hat_speaker.sh --skip-test" "Setup speaker script"
+# Setup audio script
+log_title "Setup audio script"
+run "wget -O /opt/picar-x/setup_fusion_hat_audio.sh https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh" "Download audio script"
+run "chmod 755 /opt/picar-x/setup_fusion_hat_audio.sh" "Change permissions of audio script to 755"
+run "/opt/picar-x/setup_fusion_hat_audio.sh --skip-test" "Setup audio script"
 
 # Install picar-x-app
 log_title "Install picar-x-app"
@@ -180,7 +180,7 @@ log "picar-x-app installed"
 cleanup
 
 if [ "$ERROR_HAPPENED" = false ]; then
-    log "$SUCCESS Install finished. Remember to run sudo /opt/picar-x/setup_fusion_hat_speaker.sh to enable speaker after reboot."
+    log "$SUCCESS Install finished. Remember to run sudo /opt/picar-x/setup_fusion_hat_audio.sh to enable speaker after reboot."
     # prompt reboot
     read -p "Do you want to reboot now? (y/n) " -n 1 -r
     echo
