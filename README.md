@@ -14,6 +14,22 @@ Replace `<SCRIPT>` with the name of the script you want to run. Like this:
 curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-picar-x.sh | sudo bash
 ```
 
+## Install commands
+
+Here are all install commands for easy access:
+
+```bash
+# Install Fusion Hat
+curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-fusion-hat.sh | sudo bash
+
+# Install Picar-X
+curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-picar-x.sh | sudo bash
+
+# Setup Fusion Hat Audio - this need to run again after reboot
+wget https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh
+sudo bash setup_fusion_hat_audio.sh
+
+```
 ## Scripts
 
 - `install-picar-x.sh` - Installs the Picar-X robot
