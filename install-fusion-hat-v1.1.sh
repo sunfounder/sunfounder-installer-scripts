@@ -9,14 +9,11 @@ touch $LOG_FILE
 # Get username of 1000
 USERNAME=$(getent passwd 1000 | cut -d: -f1)
 HOME=$(getent passwd 1000 | cut -d: -f6)
-FORCE_REINSTALL=false
 SUCCESS="\033[32m[✓]\033[0m"
 FAILED="\033[31m[✗]\033[0m"
 
 ERROR_HAPPENED=false
 ERROR_LOGS=""
-
-VERSION=`cat fusion_hat/version.py | grep __version__ | cut -d'"' -f2`
 
 DTOVERLAY_FILE="sunfounder-fusionhat.dtbo"
 DTOVERLAY_PATH="/boot/firmware/overlays/$DTOVERLAY_FILE"
@@ -44,7 +41,7 @@ PIP_INSTALL_LIST=(
     'spidev'
     'pyserial'
     'pillow'
-    'pygame>=2.1.2'
+    'pygame'
     'luma.led_matrix'
     'luma.core'
 )
@@ -123,7 +120,7 @@ run() {
     else
         printf "\r$FAILED %s\n" "$info"
         ERROR_HAPPENED=true
-        ERROR_LOGS+=`cat /tmp/cmd_output.log`
+        ERROR_LOGS+="\n  `cat /tmp/cmd_output.log`\n"
         echo "[✗] $info" >> $LOG_FILE
     fi
     
@@ -138,16 +135,15 @@ run() {
 if [ "$#" -gt 0  ]; then
     # 循环所有参数
     for arg in "$@"; do
-        if [ "$arg" == "--force-reinstall" ]; then
-            FORCE_REINSTALL=true
-        fi
         if [ "$arg" == "--no-dep" ]; then
             NO_DEP=true
         fi
     done
 fi
 
-log_title "Install Fusion Hat Python Library v$VERSION\n"
+log_title "Install Fusion Hat Python Library\n"
+
+cd $HOME
 
 if [ "$NO_DEP" != true ]; then
     # Install dependencies
@@ -156,56 +152,44 @@ if [ "$NO_DEP" != true ]; then
     run "apt-get install -y ${APT_INSTALL_LIST[*]}" "Install apt dependencies"
 
     # Install pip dependencies
-    log_title "Install pip dependencies"
     run "pip3 install ${PIP_INSTALL_LIST[*]} --break-system-packages" "Install pip dependencies"
 fi
 
-# Download fusion-hat library
-log_title "Download fusion-hat library"
+# Install fusion-hat library
+log_title "Install fusion-hat library"
 if [ -d $HOME/fusion-hat ]; then
-    if [ "$FORCE_REINSTALL" == true ]; then
-        run "rm -rf $HOME/fusion-hat" "Remove existing fusion-hat library"
-        run "git clone --depth=1 https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library"
-    fi
-else
-    run "git clone --depth=1 https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library"
+    run "rm -rf $HOME/fusion-hat" "Remove existing fusion-hat library"
 fi
+run "git clone --depth=1 --branch 1.1.x https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library"
+run "chown -R $USERNAME:$USERNAME $HOME/fusion-hat" "Change ownership of fusion-hat library to $USERNAME"
+
 
 # Change to fusion-hat directory
 cd $HOME/fusion-hat
 
 # Install fusion-hat library
-log_title "Install fusion-hat library"
-if [ `pip3 show fusion-hat` ]; then
-    if [ "$FORCE_REINSTALL" == true ]; then
-        run "pip3 uninstall -y fusion-hat --break-system-packages" "Uninstall existing fusion-hat library"
-        run "pip3 install . --break-system-packages" "Install fusion-hat library"
-    fi
+if [ -n "`pip3 show fusion-hat`" ]; then
+    run "pip3 uninstall -y fusion-hat --break-system-packages" "Uninstall existing fusion-hat library"
 fi
 run "pip3 install . --break-system-packages" "Install fusion-hat library"
-fi
+
+# Setup fusion hat
+log_title "Setup fusion hat"
 
 # Copy dt-overlay
-log_title "Copy dt-overlay"
-if [ -f $DTOVERLAY_PATH ]; then
-    if [ "$FORCE_REINSTALL" == true ]; then
-        run "rm $DTOVERLAY_PATH" "Remove existing dt-overlay"
-        run "cp $DTOVERLAY_FILE $DTOVERLAY_PATH" "Copy dt-overlay"
-    fi
-else
-    run "cp $DTOVERLAY_FILE $DTOVERLAY_PATH" "Copy dt-overlay"
-fi
+run "cp $DTOVERLAY_FILE $DTOVERLAY_PATH" "Copy dt-overlay"
 
 # Enable safe shutdown
 log_title "Enable safe shutdown"
-run "cp $SERVICE_FILE $SERVICE_PATH" "Copy safe shutdown service"
+run "cp bin/$SERVICE_FILE $SERVICE_PATH" "Copy safe shutdown service"
 run "systemctl enable $SERVICE_FILE" "Enable safe shutdown service" 
 run "systemctl daemon-reload" "Reload systemd daemon"
 run "systemctl start $SERVICE_FILE" "Start safe shutdown service"
 
 # Setup audio script
-log_title "Setup audio script"
+log_title "Setup audio"
 run "wget -O /opt/setup_fusion_hat_audio.sh https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh" "Download audio script"
+run "chown $USERNAME:$USERNAME /opt/setup_fusion_hat_audio.sh" "Change ownership of audio script to $USERNAME"
 run "chmod 755 /opt/setup_fusion_hat_audio.sh" "Change permissions of audio script to 755"
 run "/opt/setup_fusion_hat_audio.sh --skip-test" "Setup audio script"
 
