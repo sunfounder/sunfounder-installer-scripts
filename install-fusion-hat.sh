@@ -2,10 +2,17 @@
 
 PROGRESS_BAR_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/progress_bar.sh"
 INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer.sh"
+
 # Source progress bar
-curl -fsSL $PROGRESS_BAR_URL | source /dev/stdin
+curl -fsSL $PROGRESS_BAR_URL -o progress_bar.sh
+source progress_bar.sh
+rm progress_bar.sh
+
 # Source Installer
-curl -fsSL $INSTALLER_URL | source /dev/stdin
+curl -fsSL $INSTALLER_URL -o installer.sh
+source installer.sh
+rm installer.sh
+
 
 
 APT_INSTALL_LIST=(
