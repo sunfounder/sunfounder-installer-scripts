@@ -97,3 +97,28 @@ log_title() {
     echo -e "\033[34m$1\033[0m"
     echo "[$1]" >> $LOG_FILE
 }
+
+prompt_reboot() {
+    if [ "$ERROR_HAPPENED" = false ]; then
+        log "$SUCCESS Install finished. $1"
+        # prompt reboot
+        read -p "Do you want to reboot now? (y/n) " -n 1 -r
+        while true; do
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                log "$SUCCESS Rebooting..."
+                sleep 1
+                reboot
+            elif [[ $REPLY =~ ^[Nn]$ ]]; then
+                log "$SUCCESS Skipping reboot."
+                break
+            else
+                read -p "$FAILED Invalid input. Please enter y or n. " -n 1 -r
+            fi
+        done
+    else
+        echo -e "$FAILED Error happened: $ERROR_LOGS"
+        echo -e "$FAILED Please check $LOG_FILE for more details."
+        exit 1
+    fi
+}
