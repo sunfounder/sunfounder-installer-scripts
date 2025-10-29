@@ -1,13 +1,12 @@
 #!/bin/bash
 
+PROGRESS_BAR_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/progress_bar.sh"
+INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer.sh"
 # Source progress bar
-# curl -fsSL https://raw.githubusercontent.com/pollev/bash_progress_bar/refs/heads/master/progress_bar.sh -o progress_bar.sh
-source ./tools/progress_bar.sh
-
-
+curl -fsSL $PROGRESS_BAR_URL | source /dev/stdin
 # Source Installer
-# curl -fsSL https://raw.githubusercontent.com/pollev/bash_progress_bar/refs/heads/master/progress_bar.sh -o progress_bar.sh
-source ./tools/installer.sh
+curl -fsSL $INSTALLER_URL | source /dev/stdin
+
 
 APT_INSTALL_LIST=(
     "git"
@@ -41,6 +40,7 @@ COMMANDS=(
     "log_title \"Install dependencies\""
     "run \"apt-get update\" \"Update apt\""
     "run \"apt-get install -y ${APT_INSTALL_LIST[*]}\" \"Install apt dependencies\""
+    "run \"pip3 uninstall -y RPi.GPIO --break-system-packages\" \"Uninstall RPi.GPIO\""
 
     # Install fusion-hat library
     "log_title \"Install fusion-hat library\""
