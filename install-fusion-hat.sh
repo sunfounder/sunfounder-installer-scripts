@@ -13,8 +13,6 @@ curl -fsSL $INSTALLER_URL -o installer.sh
 source installer.sh
 rm installer.sh
 
-
-
 APT_INSTALL_LIST=(
     "git"
     "python3"
@@ -52,7 +50,7 @@ COMMANDS=(
     # Install fusion-hat library
     "log_title \"Install fusion-hat library\""
     "run \"rm -rf $HOME/fusion-hat\" \"Remove existing fusion-hat library\""
-    "run \"git clone --depth=1 --branch driver https://github.com/sunfounder/fusion-hat.git\" \"Clone fusion-hat library\""
+    "run \"git clone --depth=1 --branch main https://github.com/sunfounder/fusion-hat.git\" \"Clone fusion-hat library\""
     "run \"chown -R $USERNAME:$USERNAME $HOME/fusion-hat\" \"Change ownership of fusion-hat library to $USERNAME\""
 
     # Install fusion-hat driver
