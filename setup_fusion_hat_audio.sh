@@ -629,18 +629,7 @@ install_soundcard_driver() {
     newline
     info "open speaker ..."
     # enable speaker
-    if [ $hat_spk_en == "I2C_0x31" ]; then
-        info "i2cset -y 1 ${hat_i2c_addr} ${SPK_EN_REG_ADDR} 1"
-        i2cset -y 1 ${hat_i2c_addr} ${SPK_EN_REG_ADDR} 1
-    else
-        if command -v pinctrl >/dev/null; then
-            pinctrl set $hat_spk_en op dh
-        elif command -v raspi-gpio >/dev/null; then
-            raspi-gpio set $hat_spk_en op dh
-        else
-            warning "Could not find pinctrl or raspi-gpio command."
-        fi
-    fi
+    echo 1 > /sys/class/fusion_hat/fusion_hat/speaker
     # play a short sound to fill data and avoid the speaker overheating
     play -n trim 0.0 0.5 2>/dev/null
 

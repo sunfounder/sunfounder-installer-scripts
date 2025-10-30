@@ -67,6 +67,7 @@ COMMANDS=(
 
     # Setup audio script
     "log_title \"Setup audio script\""
+    "run \"rm -f /opt/setup_fusion_hat_audio.sh\" \"Remove existing audio script\""
     "run \"wget -O /opt/setup_fusion_hat_audio.sh https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh\" \"Download audio script\""
     "run \"chown $USERNAME:$USERNAME /opt/setup_fusion_hat_audio.sh\" \"Change ownership of audio script to $USERNAME\""
     "run \"chmod 755 /opt/setup_fusion_hat_audio.sh\" \"Change permissions of audio script to 755\""
