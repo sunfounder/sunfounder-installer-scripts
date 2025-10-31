@@ -154,7 +154,7 @@ install() {
     destroy_scroll_area
     
     if [ "$ERROR_HAPPENED" = false ]; then
-        echo -e "Install finished. $1"
+        echo -e "Install finished."
     else
         echo -e "Error happened: $ERROR_LOGS"
         echo -e "Please check $LOG_FILE for more details."
@@ -166,6 +166,7 @@ prompt_reboot() {
     # prompt reboot - read from /dev/tty to avoid conflict with pipe input
     read -p "Do you want to reboot now? (y/n) " -n 1 -r < /dev/tty
     while true; do
+        echo ""
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             echo -e "Rebooting..."
             sleep 1
