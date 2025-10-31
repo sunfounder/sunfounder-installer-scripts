@@ -93,7 +93,6 @@ handle_interrupt() {
 # 注册信号处理函数
 trap handle_interrupt SIGINT
 
-
 log() {
     echo -e "$1"
     echo "$1" >> $LOG_FILE
@@ -104,15 +103,13 @@ log_title() {
     echo "[$1]" >> $LOG_FILE
 }
 
-setup() {
-    check_root_privileges
-    # Make sure that the progress bar is cleaned up when user presses ctrl+c
-    enable_trapping
-    # Create progress bar
-    setup_scroll_area
-}
+check_root_privileges
+# Make sure that the progress bar is cleaned up when user presses ctrl+c
+enable_trapping
 
 install() {
+    # Create progress bar
+    setup_scroll_area
     COMMANDS=$1
     total=${#COMMANDS[@]}
     count=0
@@ -121,6 +118,7 @@ install() {
         count=$((count+1))
         draw_progress_bar $((count*100/total))
     done
+    destroy_scroll_area
 }
 
 prompt_reboot() {
