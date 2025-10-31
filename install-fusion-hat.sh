@@ -1,12 +1,6 @@
 #!/bin/bash
 
-PROGRESS_BAR_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/progress_bar.sh"
 INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer.sh"
-
-# Source progress bar
-curl -fsSL $PROGRESS_BAR_URL -o progress_bar.sh
-source progress_bar.sh
-rm progress_bar.sh
 
 # Source Installer
 curl -fsSL $INSTALLER_URL -o installer.sh
@@ -30,14 +24,6 @@ APT_INSTALL_LIST=(
 cleanup() {
     log_title "Cleanup"
 }
-
-check_root_privileges
-# Make sure that the progress bar is cleaned up when user presses ctrl+c
-enable_trapping
-# Create progress bar
-setup_scroll_area
-
-cd $HOME
 
 COMMANDS=(
     # Install dependencies
@@ -75,12 +61,6 @@ COMMANDS=(
     "run \"/opt/setup_fusion_hat_audio.sh --skip-test\" \"Setup audio\""
 )
 
-total=${#COMMANDS[@]}
-count=0
-for cmd in "${COMMANDS[@]}"; do
-    eval $cmd
-    count=$((count+1))
-    draw_progress_bar $((count*100/total))
-done
+install $COMMANDS
 
 prompt_reboot "Remember to run sudo /opt/setup_fusion_hat_audio.sh to enable speaker after reboot."
