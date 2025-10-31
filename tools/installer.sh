@@ -34,7 +34,8 @@ run() {
     while [ -d /proc/$pid ]; do
         local char=${spinstr:$i:1}
         if [ "$PLAIN_TEXT" != true ]; then
-            echo -e "\033[36m[$char]\033[0m $info\r"
+            # echo -e "\033[36m[$char]\033[0m $info\r"
+            printf "\033[36m[%s]\033[0m %s\r" "$char" "$info"
         fi
         i=$(( (i+1) % ${#spinstr} ))
         sleep $delay
