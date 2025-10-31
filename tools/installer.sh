@@ -4,19 +4,15 @@ curl -fsSL $PROGRESS_BAR_URL -o progress_bar.sh
 source progress_bar.sh
 rm progress_bar.sh
 
-
-LOG_FILE="./install.log"
-if [ -f "$LOG_FILE" ]; then
-    rm $LOG_FILE
-fi
-touch $LOG_FILE
-
 # Get username of 1000
+LOG_FILE="/tmp/install.log"
 USERNAME=${SUDO_USER:-$USER}
 HOME=$(getent passwd $USERNAME | cut -d: -f6)
 SUCCESS="\033[32m[✓]\033[0m"
 FAILED="\033[31m[✗]\033[0m"
-
+SUCCESS_PLAIN_TEXT="[✓]"
+FAILED_PLAIN_TEXT="[✗]"
+PLAIN_TEXT=false
 ERROR_HAPPENED=false
 ERROR_LOGS=""
 
@@ -37,7 +33,9 @@ run() {
     # 显示旋转光标和详细信息
     while [ -d /proc/$pid ]; do
         local char=${spinstr:$i:1}
-        printf "\r\033[36m[%s]\033[0m %s" "$char" "$info"
+        if [ "$PLAIN_TEXT" != true ]; then
+            printf "\033[36m[$char]\033[0m $info\r"
+        fi
         i=$(( (i+1) % ${#spinstr} ))
         sleep $delay
     done
@@ -50,13 +48,11 @@ run() {
     tput cnorm
     
     if [ $result -eq 0 ]; then
-        printf "\r$SUCCESS %s\n" "$info"
-        echo "[✓] $info" >> $LOG_FILE
+        log_success "$info"
     else
-        printf "\r$FAILED %s\n" "$info"
+        log_failed "$info"
         ERROR_HAPPENED=true
         ERROR_LOGS+="\n  `cat /tmp/cmd_output.log`\n"
-        echo "[✗] $info" >> $LOG_FILE
     fi
     
     # 清理临时文件
@@ -93,21 +89,57 @@ handle_interrupt() {
 # 注册信号处理函数
 trap handle_interrupt SIGINT
 
-log() {
-    echo -e "$1"
-    echo "$1" >> $LOG_FILE
+init_log_file() {
+    if [ "$PLAIN_TEXT" != true ]; then
+        if [ -f "$LOG_FILE" ]; then
+            rm $LOG_FILE
+        fi
+        touch $LOG_FILE
+    fi
 }
 
 log_title() {
-    echo -e "\033[34m$1\033[0m"
-    echo "[$1]" >> $LOG_FILE
+    if [ "$PLAIN_TEXT" == true ]; then
+        echo -e $1
+    else
+        echo -e "\033[34m$1\033[0m"
+        echo "[$1]" >> $LOG_FILE
+    fi
+}
+
+log_success() {
+    if [ "$PLAIN_TEXT" == true ]; then
+        echo -e "$SUCCESS_PLAIN_TEXT $1"
+    else
+        echo -e "$SUCCESS $1"
+        echo "$SUCCESS_PLAIN_TEXT $1" >> $LOG_FILE
+    fi
+}
+
+log_failed() {
+    if [ "$PLAIN_TEXT" == true ]; then
+        echo -e "$FAILED_PLAIN_TEXT $1"
+    else
+        echo -e "$FAILED $1"
+        echo "$FAILED_PLAIN_TEXT $1" >> $LOG_FILE
+    fi
 }
 
 check_root_privileges
 # Make sure that the progress bar is cleaned up when user presses ctrl+c
 enable_trapping
 
+for arg in "$@"; do
+    case $arg in
+    --plain-text)
+        PLAIN_TEXT=true
+        ;;
+    esac
+done
+
+
 install() {
+    init_log_file
     # Create progress bar
     setup_scroll_area
     COMMANDS=$1
@@ -123,25 +155,25 @@ install() {
 
 prompt_reboot() {
     if [ "$ERROR_HAPPENED" = false ]; then
-        log "$SUCCESS Install finished. $1"
+        log_success "Install finished. $1"
         # prompt reboot
         read -p "Do you want to reboot now? (y/n) " -n 1 -r
         while true; do
             echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
-                log "$SUCCESS Rebooting..."
+                log_success "Rebooting..."
                 sleep 1
                 reboot
             elif [[ $REPLY =~ ^[Nn]$ ]]; then
-                log "$SUCCESS Skipping reboot."
+                log_success "Skipping reboot."
                 break
             else
-                read -p "$FAILED Invalid input. Please enter y or n. " -n 1 -r
+                read -p "Invalid input. Please enter y or n. " -n 1 -r
             fi
         done
     else
-        echo -e "$FAILED Error happened: $ERROR_LOGS"
-        echo -e "$FAILED Please check $LOG_FILE for more details."
+        echo -e "Error happened: $ERROR_LOGS"
+        echo -e "Please check $LOG_FILE for more details."
         exit 1
     fi
 }
