@@ -6,8 +6,8 @@ fi
 touch $LOG_FILE
 
 # Get username of 1000
-USERNAME=$(getent passwd 1000 | cut -d: -f1)
-HOME=$(getent passwd 1000 | cut -d: -f6)
+USERNAME=${SUDO_USER:-$USER}
+HOME=$(getent passwd $USERNAME | cut -d: -f6)
 SUCCESS="\033[32m[✓]\033[0m"
 FAILED="\033[31m[✗]\033[0m"
 

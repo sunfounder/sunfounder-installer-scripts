@@ -49,6 +49,7 @@ COMMANDS=(
 
     # Install fusion-hat library
     "log_title \"Install fusion-hat library\""
+    "cd $HOME/"
     "run \"rm -rf $HOME/fusion-hat\" \"Remove existing fusion-hat library\""
     "run \"git clone --depth=1 --branch main https://github.com/sunfounder/fusion-hat.git\" \"Clone fusion-hat library\""
     "run \"chown -R $USERNAME:$USERNAME $HOME/fusion-hat\" \"Change ownership of fusion-hat library to $USERNAME\""
