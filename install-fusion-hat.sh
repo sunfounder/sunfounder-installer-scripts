@@ -4,6 +4,10 @@ INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer
 
 # Source Installer
 curl -fsSL $INSTALLER_URL -o installer.sh
+if [ $? -ne 0 ]; then
+    log_failed "Network error, please check your internet connection."
+    exit 1
+fi
 source installer.sh
 rm installer.sh
 

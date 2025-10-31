@@ -34,7 +34,7 @@ run() {
     while [ -d /proc/$pid ]; do
         local char=${spinstr:$i:1}
         if [ "$PLAIN_TEXT" != true ]; then
-            printf "\033[36m[$char]\033[0m $info\r"
+            echo -e "\033[36m[$char]\033[0m $info\r"
         fi
         i=$(( (i+1) % ${#spinstr} ))
         sleep $delay
@@ -151,28 +151,29 @@ install() {
         draw_progress_bar $((count*100/total))
     done
     destroy_scroll_area
-}
-
-prompt_reboot() {
+    
     if [ "$ERROR_HAPPENED" = false ]; then
         echo -e "Install finished. $1"
-        # prompt reboot - read from /dev/tty to avoid conflict with pipe input
-        read -p "Do you want to reboot now? (y/n) " -n 1 -r < /dev/tty
-        while true; do
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                echo -e "Rebooting..."
-                sleep 1
-                reboot
-            elif [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo -e "Skipping reboot."
-                break
-            else
-                read -p "Invalid input. Please enter y or n. " -n 1 -r < /dev/tty
-            fi
-        done
     else
         echo -e "Error happened: $ERROR_LOGS"
         echo -e "Please check $LOG_FILE for more details."
         exit 1
     fi
+}
+
+prompt_reboot() {
+    # prompt reboot - read from /dev/tty to avoid conflict with pipe input
+    read -p "Do you want to reboot now? (y/n) " -n 1 -r < /dev/tty
+    while true; do
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "Rebooting..."
+            sleep 1
+            reboot
+        elif [[ $REPLY =~ ^[Nn]$ ]]; then
+            echo -e "Skipping reboot."
+            break
+        else
+            read -p "Invalid input. Please enter y or n. " -n 1 -r < /dev/tty
+        fi
+    done
 }
