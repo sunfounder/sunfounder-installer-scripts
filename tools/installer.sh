@@ -155,17 +155,16 @@ install() {
 
 prompt_reboot() {
     if [ "$ERROR_HAPPENED" = false ]; then
-        log_success "Install finished. $1"
+        echo -e "Install finished. $1"
         # prompt reboot - read from /dev/tty to avoid conflict with pipe input
         read -p "Do you want to reboot now? (y/n) " -n 1 -r < /dev/tty
         while true; do
-            echo
             if [[ $REPLY =~ ^[Yy]$ ]]; then
-                log_success "Rebooting..."
+                echo -e "Rebooting..."
                 sleep 1
                 reboot
             elif [[ $REPLY =~ ^[Nn]$ ]]; then
-                log_success "Skipping reboot."
+                echo -e "Skipping reboot."
                 break
             else
                 read -p "Invalid input. Please enter y or n. " -n 1 -r < /dev/tty
