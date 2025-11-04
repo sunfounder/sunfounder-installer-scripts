@@ -4,6 +4,14 @@ curl -fsSL $PROGRESS_BAR_URL -o progress_bar.sh
 source progress_bar.sh
 rm progress_bar.sh
 
+CONFIG_TXT_MANAGER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/config_txt_manager.sh"
+# Source config_txt_manager
+curl -fsSL $CONFIG_TXT_MANAGER_URL -o config_txt_manager.sh
+source config_txt_manager.sh
+rm config_txt_manager.sh
+
+
+
 # Get username of 1000
 LOG_FILE="/tmp/install.log"
 USERNAME=${SUDO_USER:-$USER}
@@ -15,6 +23,7 @@ FAILED_PLAIN_TEXT="[✗]"
 PLAIN_TEXT=false
 ERROR_HAPPENED=false
 ERROR_LOGS=""
+CONFIG_TXT_FILE=$(config_txt_find)
 
 run() {
     local cmd="$1"
