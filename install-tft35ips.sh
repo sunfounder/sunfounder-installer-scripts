@@ -12,10 +12,11 @@ source installer.sh
 rm installer.sh
 
 APT_INSTALL_LIST=(
-    "raspberrypi-kernel-headers"
+    "git"
 )
 
 cleanup() {
+    log_title "Cleanup"
 }
 
 COMMANDS=(
@@ -40,7 +41,7 @@ COMMANDS=(
     "log_title \"Setup driver\""
     "cd $HOME/sunfounder-tft35ips"
     "run \"cp 99-calibration.conf /etc/X11/xorg.conf.d/\" \"Copy calibration config\""
-    "run \"config_txt_set $CONFIG_TXT_FILE dtoverlay=sunfounder-tft35ips\" \"Add dtoverlay\""
+    "run \"config_txt_set $CONFIG_TXT_FILE dtoverlay=sunfounder-tft35ips\" \"Enable dtoverlay\""
 )
 
 install $COMMANDS
