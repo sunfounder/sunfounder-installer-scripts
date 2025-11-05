@@ -11,6 +11,8 @@ fi
 source installer.sh
 rm installer.sh
 
+source ./tools/progress_bar.sh
+
 APT_INSTALL_LIST=(
     "git"
 )
@@ -21,7 +23,8 @@ cleanup() {
 
 COMMANDS=(
     # Install dependencies
-    "log_title \"Install SunFounder TFT 3.5 Inch Display Driver\n\""
+    "log_title \"Install SunFounder TFT 3.5 Inch Display Driver\""
+    "log_title \"Install SunFounder TFT 3.5 Inch Display Driver\""
     "log_title \"Install dependencies\""
     "run \"apt-get update\" \"Update apt\""
     "run \"apt-get install -y ${APT_INSTALL_LIST[*]}\" \"Install apt dependencies\""
@@ -46,4 +49,4 @@ COMMANDS=(
 
 install $COMMANDS
 
-prompt_reboot ""
+prompt_reboot "SunFounder TFT 3.5 Inch Display Driver installation completed."

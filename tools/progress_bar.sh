@@ -23,28 +23,64 @@ if [ ! -t 1 ] && [ -z "$TERM" ]; then
     echo "Warning: Running in non-interactive mode. Progress bar may not display correctly." >&2
 fi
 
-# Constants
-readonly CODE_SAVE_CURSOR="\033[s"
-readonly CODE_RESTORE_CURSOR="\033[u"
-readonly CODE_CURSOR_IN_SCROLL_AREA="\033[1A"
-readonly COLOR_FG="\e[30m"
-readonly COLOR_BG="\e[42m"
-readonly COLOR_BG_BLOCKED="\e[43m"
-readonly RESTORE_FG="\e[39m"
-readonly RESTORE_BG="\e[49m"
-readonly MAX_BAR_SIZE=100
+# Constants - check if they exist before declaring as readonly
+if [ -z "${CODE_SAVE_CURSOR+x}" ]; then
+    readonly CODE_SAVE_CURSOR="\033[s"
+fi
+if [ -z "${CODE_RESTORE_CURSOR+x}" ]; then
+    readonly CODE_RESTORE_CURSOR="\033[u"
+fi
+if [ -z "${CODE_CURSOR_IN_SCROLL_AREA+x}" ]; then
+    readonly CODE_CURSOR_IN_SCROLL_AREA="\033[1A"
+fi
+if [ -z "${COLOR_FG+x}" ]; then
+    readonly COLOR_FG="\e[30m"
+fi
+if [ -z "${COLOR_BG+x}" ]; then
+    readonly COLOR_BG="\e[42m"
+fi
+if [ -z "${COLOR_BG_BLOCKED+x}" ]; then
+    readonly COLOR_BG_BLOCKED="\e[43m"
+fi
+if [ -z "${RESTORE_FG+x}" ]; then
+    readonly RESTORE_FG="\e[39m"
+fi
+if [ -z "${RESTORE_BG+x}" ]; then
+    readonly RESTORE_BG="\e[49m"
+fi
+if [ -z "${MAX_BAR_SIZE+x}" ]; then
+    readonly MAX_BAR_SIZE=100
+fi
 
 # Global Variables (minimized and properly initialized)
-PROGRESS_BLOCKED="false"
-TRAPPING_ENABLED="false"
-ETA_ENABLED="false"
-TRAP_SET="false"
-
-CURRENT_NR_LINES=0
-PROGRESS_TITLE=""
-PROGRESS_TOTAL=100
-PROGRESS_START=0
-BLOCKED_START=0
+# Only initialize if not already set
+if [ -z "${PROGRESS_BLOCKED+x}" ]; then
+    PROGRESS_BLOCKED="false"
+fi
+if [ -z "${TRAPPING_ENABLED+x}" ]; then
+    TRAPPING_ENABLED="false"
+fi
+if [ -z "${ETA_ENABLED+x}" ]; then
+    ETA_ENABLED="false"
+fi
+if [ -z "${TRAP_SET+x}" ]; then
+    TRAP_SET="false"
+fi
+if [ -z "${CURRENT_NR_LINES+x}" ]; then
+    CURRENT_NR_LINES=0
+fi
+if [ -z "${PROGRESS_TITLE+x}" ]; then
+    PROGRESS_TITLE=""
+fi
+if [ -z "${PROGRESS_TOTAL+x}" ]; then
+    PROGRESS_TOTAL=100
+fi
+if [ -z "${PROGRESS_START+x}" ]; then
+    PROGRESS_START=0
+fi
+if [ -z "${BLOCKED_START+x}" ]; then
+    BLOCKED_START=0
+fi
 
 # Function to validate percentage values
 validate_percentage() {
@@ -283,7 +319,6 @@ print_bar_text() {
     local percentage=$1
     local extra="${2:-}"
     local eta="${3:-}"
-    local bar_size
     
     # Format extra text
     if [ -n "$extra" ]; then
@@ -312,7 +347,7 @@ print_bar_text() {
     fi
     
     # Calculate bar size with reasonable maximum
-    bar_size=$((cols - min_required))
+    local bar_size=$((cols - min_required))
     if [ "$bar_size" -gt "$MAX_BAR_SIZE" ]; then
         bar_size=$MAX_BAR_SIZE
     fi
@@ -327,16 +362,27 @@ print_bar_text() {
     local complete_size=$(((bar_size * percentage) / 100))
     local remainder_size=$((bar_size - complete_size))
     
-    # Generate progress bar string
-    local progress_bar
-    progress_bar="["$(echo -ne "${color}")
-    progress_bar+="$(printf_new "#" "$complete_size")"
-    progress_bar+="$(echo -ne "${RESTORE_FG}${RESTORE_BG}")"
-    progress_bar+="$(printf_new "." "$remainder_size")"
-    progress_bar+"]"
+    # Simple direct output approach
+    echo -ne " $PROGRESS_TITLE ${percentage}% ["
     
-    # Print complete progress bar
-    echo -ne " $PROGRESS_TITLE ${percentage}% ${progress_bar}${extra}"
+    # Print the filled part with color
+    if [ "$complete_size" -gt 0 ]; then
+        echo -ne "${color}"
+        for ((i=0; i<complete_size; i++)); do
+            echo -ne "#"
+        done
+        echo -ne "${RESTORE_FG}${RESTORE_BG}"
+    fi
+    
+    # Print the remaining part
+    if [ "$remainder_size" -gt 0 ]; then
+        for ((i=0; i<remainder_size; i++)); do
+            echo -ne "."
+        done
+    fi
+    
+    # Close the bracket and add extra text
+    echo -ne "]${extra}"
 }
 
 # Enable signal trapping
@@ -353,7 +399,7 @@ trap_on_interrupt() {
     fi
 }
 
-# Clean up on interrupt (more graceful exit)
+# Clean up on interrupt and terminate script
 cleanup_on_interrupt() {
     # Save exit code
     local exit_code=$?
@@ -363,8 +409,16 @@ cleanup_on_interrupt() {
         destroy_scroll_area
     fi
     
-    # Don't force exit, let the calling script handle it
-    return "$exit_code"
+    # Force exit the script when interrupted (Ctrl+C)
+    # Check if the signal that triggered this was INT (Ctrl+C)
+    if [ "$exit_code" -eq 130 ] || [ "$exit_code" -eq 0 ]; then
+        # 130 is the exit code for SIGINT, 0 means we were called directly
+        # echo -e "\n\nScript interrupted by user (Ctrl+C). Exiting..."
+        exit 130
+    fi
+    
+    # For other signals, exit with appropriate code
+    exit "$exit_code"
 }
 
 # Helper function to print repeated characters
