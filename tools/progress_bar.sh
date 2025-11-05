@@ -329,7 +329,7 @@ print_bar_text() {
     
     # Generate progress bar string
     local progress_bar
-    progress_bar="["$(echo -ne "${color}")"
+    progress_bar="["$(echo -ne "${color}")
     progress_bar+="$(printf_new "#" "$complete_size")"
     progress_bar+="$(echo -ne "${RESTORE_FG}${RESTORE_BG}")"
     progress_bar+="$(printf_new "." "$remainder_size")"
