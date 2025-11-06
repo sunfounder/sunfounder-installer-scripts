@@ -10,8 +10,6 @@ curl -fsSL $CONFIG_TXT_MANAGER_URL -o config_txt_manager.sh
 source config_txt_manager.sh
 rm config_txt_manager.sh
 
-
-
 # Get username of 1000
 LOG_FILE="/tmp/install.log"
 USERNAME=${SUDO_USER:-$USER}
