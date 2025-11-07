@@ -2,101 +2,74 @@
 
 # global variables
 # =================================================================
-VERSION="0.0.8"
+VERSION="1.0.0"
 USERNAME=${SUDO_USER:-$LOGNAME}
-USER_RUN="sudo -u ${USERNAME} env XDG_RUNTIME_DIR=/run/user/$(id -u ${USERNAME})"
+# 安全地获取用户 ID
+USER_ID=$(id -u "${USERNAME}" 2>/dev/null || echo "1000")
+USER_RUN="sudo -u ${USERNAME} XDG_RUNTIME_DIR=/run/user/${USER_ID} DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${USER_ID}/bus"
 SKIP_TEST=false
 
-CONFIG="/boot/firmware/config.txt"
-# Fall back to the old config.txt path
-if ! test -f $CONFIG; then
-    CONFIG="/boot/config.txt"
+# 检测是否在终端环境中
+if [ -t 1 ]; then
+    TERMINAL=true
+else
+    TERMINAL=false
 fi
+
+POSSIBLE_CONFIGS=(
+    "/boot/config.txt"
+    "/boot/firmware/config.txt"
+    "/boot/firmware/current/config.txt"
+)
+CONFIG=""
+for config in "${POSSIBLE_CONFIGS[@]}"; do
+    if test -f $config; then
+        CONFIG=$config
+        break
+    fi
+done
 
 ASOUND_CONF="/etc/asound.conf"
 
-# ----- hat without onboard mic -----
-DTOVERLAY_WITHOUT_MIC="hifiberry-dac"
-AUDIO_CARD_NAME_WITHOUT_MIC="sndrpihifiberry"
-ALSA_CARD_NAME_WITHOUT_MIC="snd_rpi_hifiberry_dac"
-
-# ----- hat with onboard mic -----
-DTOVERLAY_WITH_MIC="googlevoicehat-soundcard"
-AUDIO_CARD_NAME_WITH_MIC="sndrpigooglevoi"
-ALSA_CARD_NAME_WITH_MIC="snd_rpi_googlevoicehat_soundcar"
-
-# ----- hat ID EEPROME -----
-HAT_DEVICE_TREE="/proc/decvice-tree/"
-HAT_UUIDs=(
-    "9daeea78-0000-0774-000a-582369ac3e02" # fusion_hat
-    "9daeea78-0000-076e-003c-582369ac3e02" # robothat6-beta
-    "9daeea78-0000-076e-0032-582369ac3e02" # robothat5
-)
-HAT_NAMEs=(
-    "fusion_hat"
-    "robothat6-beta"
-    "robothat5"
-)
-HAT_SPK_ENs=(
-    "I2C_0x31"
-    "I2C_0x31"
-    20
-)
-HAT_I2C_ADDRs=(
-    "0x17"
-    "0x17"
-    "0x14"
-)
-HAT_IS_WITH_MICs=(
-    true
-    true
-    false
-)
-SPK_EN_REG_ADDR="0x31"
-
-# ---------------------------
-hat_index=0
-hat_uuid=""
-hat_name=""
-hat_spk_en=""
-hat_i2c_addr=""
-
-hat_product=""
-hat_product_id=0
-hat_product_ver=0
-hat_uuid=""
-hat_vendor=""
+DTOVERLAY="googlevoicehat-soundcard"
+AUDIO_CARD_NAME="sndrpigooglevoi"
+ALSA_CARD_NAME="snd_rpi_googlevoicehat_soundcar"
+HAT_NAME="Fusion Hat"
 
 _is_install_deps=true
 _is_with_mic=true
-dtoverlay_name=""
-audio_card_name=""
-alsa_card_name=""
+_cleanup=false
 
-# function define
-# =================================================================
-# black     0
-# red       1
-# green     2
-# yellow    3
-# blue      4
-# magenta   5
-# cyan      6
-# white     7
 success() {
-    echo -e "$(tput setaf 2)$1$(tput sgr0)"
+    if [ "$TERMINAL" = true ]; then
+        echo -e "$(tput setaf 2 2>/dev/null)$1$(tput sgr0 2>/dev/null)"
+    else
+        echo "[SUCCESS] $1"
+    fi
 }
 
 info() {
-    echo -e "$(tput setaf 6)$1$(tput sgr0)"
+    if [ "$TERMINAL" = true ]; then
+        echo -e "$(tput setaf 6 2>/dev/null)$1$(tput sgr0 2>/dev/null)"
+    else
+        echo "[INFO] $1"
+    fi
 }
 
 warning() {
-    echo -e "$(tput setaf 3)$1$(tput sgr0)"
+    if [ "$TERMINAL" = true ]; then
+        echo -e "$(tput setaf 3 2>/dev/null)$1$(tput sgr0 2>/dev/null)"
+    else
+        echo "[WARNING] $1"
+    fi
 }
 
 error() {
-    echo -e "$(tput setaf 1)$1$(tput sgr0)"
+    if [ "$TERMINAL" = true ]; then
+        echo -e "$(tput setaf 1 2>/dev/null)$1$(tput sgr0 2>/dev/null)"
+    else
+        echo "[ERROR] $1"
+    fi
 }
 
 newline() {
@@ -141,69 +114,7 @@ get_soundcard_index() {
     echo $card_index
 }
 
-config_asound_without_mic() {
-    # backup file
-    if [ -e "${ASOUND_CONF}" ]; then
-        if [ -e "${ASOUND_CONF}.old" ]; then
-            sudo rm -f "${ASOUND_CONF}.old"
-        fi
-        sudo cp "${ASOUND_CONF}" "${ASOUND_CONF}.old"
-    fi
-
-    sudo cat >"${ASOUND_CONF}" <<EOF
-
-pcm.speaker {
-    type hw
-    card ${AUDIO_CARD_NAME_WITHOUT_MIC}
-}
-
-pcm.dmixer {
-    type dmix
-    ipc_key 1024
-    ipc_perm 0666
-    slave {
-        pcm "speaker"
-        period_time 0
-        period_size 1024
-        buffer_size 8192
-        rate 44100
-        channels 2
-    }
-}
-
-ctl.dmixer {
-    type hw
-    card ${AUDIO_CARD_NAME_WITHOUT_MIC}
-}
-
-pcm.softvol {
-    type softvol
-    slave.pcm "dmixer"
-    control {
-        name "${hat_name} speaker Playback Volume"
-        card ${AUDIO_CARD_NAME_WITHOUT_MIC}
-    }
-    min_dB -51.0
-    max_dB 0.0
-}
-
-pcm.hat {
-    type plug
-    slave.pcm "softvol"
-}
-
-ctl.hat {
-    type hw
-    card ${AUDIO_CARD_NAME_WITHOUT_MIC}
-}
-
-pcm.!default hat
-ctl.!default hat
-
-EOF
-}
-
-config_asound_with_mic() {
+config_asound() {
     # backup file
     if [ -e "${ASOUND_CONF}" ]; then
         if [ -e "${ASOUND_CONF}.old" ]; then
@@ -228,7 +139,7 @@ pcm.hat {
 
 pcm.speaker_hw {
     type hw
-    card ${AUDIO_CARD_NAME_WITH_MIC}
+    card ${AUDIO_CARD_NAME}
     device 0
 }
 
@@ -248,7 +159,7 @@ pcm.dmixer {
 
 ctl.dmixer {
     type hw
-    card ${AUDIO_CARD_NAME_WITH_MIC}
+    card ${AUDIO_CARD_NAME}
 }
 
 pcm.speaker {
@@ -257,8 +168,8 @@ pcm.speaker {
         pcm "dmixer"
     }
     control {
-        name "${hat_name} speaker Playback Volume"
-        card ${AUDIO_CARD_NAME_WITH_MIC}
+        name "${HAT_NAME} Playback Volume"
+        card ${AUDIO_CARD_NAME}
     }
     min_dB -51.0
     max_dB 0.0
@@ -266,7 +177,7 @@ pcm.speaker {
 
 pcm.mic_hw {
     type hw
-    card ${AUDIO_CARD_NAME_WITH_MIC}
+    card ${AUDIO_CARD_NAME}
     device 0
 }
 
@@ -276,8 +187,8 @@ pcm.mic {
         pcm "mic_hw"
     }
     control {
-        name "${hat_name} mic Capture Volume"
-        card ${AUDIO_CARD_NAME_WITH_MIC}
+        name "${HAT_NAME} Capture Volume"
+        card ${AUDIO_CARD_NAME}
     }
     min_dB -26.0
     max_dB 25.0
@@ -285,7 +196,7 @@ pcm.mic {
 
 ctl.hat {
     type hw
-    card ${AUDIO_CARD_NAME_WITH_MIC}
+    card ${AUDIO_CARD_NAME}
 }
 
 pcm.!default hat
@@ -363,58 +274,14 @@ set_default_source_volume() {
         pactl set-source-volume @DEFAULT_SOURCE@ ${volume}%
 }
 
-check_hat() {
-    # find hat device-tree directory
-    hat_dirs=$(find /proc/device-tree/*hat* -type d)
-    # echo $hat_dirs
-    hat_dir=""
-
-    for dir in $hat_dirs; do
-        if [ ! -e "$dir"/uuid ]; then
-            continue
-        fi
-        uuid=$(tr -d '\0' <"$dir"/uuid)
-        # echo uuid:$uuid
-
-        # ----- whether uuid in HAT_UUIDs -----
-        # echo HAT_UUIDs:${HAT_UUIDs[@]}
-        # if [[ -n "${uuid}" && "${HAT_UUIDs[@]}" =~ "${uuid}" ]]; then
-        #     hat_dir=$dir
-        #     break
-        # fi
-
-        for i in "${!HAT_UUIDs[@]}"; do
-            if [[ "${HAT_UUIDs[$i]}" == "${uuid}" ]]; then
-                hat_index=$i
-                hat_dir=$dir
-                break
-            fi
-        done
-    done
-
-    echo hat_dir:$hat_dir
-    if [[ -z "${hat_dir}" ]]; then
-        echo "No HAT info found in /proc/device-tree"
-        return
-    fi
-
-    # read hat info
-    hat_product=$(tr -d '\0' <"$hat_dir"/product)
-    hat_product_id_hex=$(tr -d '\0' <"$hat_dir"/product_id)
-    hat_product_ver_hex=$(tr -d '\0' <"$hat_dir"/product_ver)
-    let hat_product_id=$(printf "%d" $hat_product_id_hex)
-    let hat_product_ver=$(printf "%d" $hat_product_ver_hex)
-
-    hat_uuid=$(tr -d '\0' <"$hat_dir"/uuid)
-    hat_vendor=$(tr -d '\0' <"$hat_dir"/vendor)
-
-    success "Found:"
-    success "  Product: $hat_product"
-    success "  Product ID: $hat_product_id ($hat_product_id_hex)"
-    success "  Version: $hat_product_ver ($hat_product_ver_hex)"
-    success "  Vendor: $hat_vendor"
-    success "  UUID: $hat_uuid"
-}
+APT_INSTALL_PKGS=(
+    "i2c-tools"
+    "alsa-utils"
+    "pulseaudio"
+    "pulseaudio-utils"
+    "jq"
+    "sox"
+)
 
 # main_fuction
 # ================================================================================
@@ -434,139 +301,55 @@ install_soundcard_driver() {
         info "apt update..."
         apt update
 
-        info "install i2c-tools ..."
-        apt install i2c-tools -y
-
-        info "install alsa-utils ..."
-        # alsa-utils includes:
-        #  alsamixer, aplay, arecord, amixer, speaker-test
-        apt install alsa-utils -y
-
-        info "install pulseaudio ..."
-        apt install pulseaudio -y
-
-        info "install pulseaudio-utils ..."
-        apt install pulseaudio-utils -y
-
-        info "install jq ..."
-        apt install jq -y
-
-        info "install sox ..."
-        apt install sox -y
+        info "install apt packages ..."
+        apt install ${APT_INSTALL_PKGS[@]} -y
     else
         info "skip install deps ..."
     fi
 
-    # detect hat
-    # =====================================
-    newline
-    info "check hat ..."
-    check_hat
-
-    hat_name=${HAT_NAMEs[$hat_index]}
-    hat_spk_en=${HAT_SPK_ENs[$hat_index]}
-    hat_i2c_addr=${HAT_I2C_ADDRs[$hat_index]}
-    _is_with_mic=${HAT_IS_WITH_MICs[$hat_index]}
-
-    newline
-    success "  HAT index: $hat_index"
-    success "  HAT name: $hat_name"
-    success "  HAT i2c_addr: $hat_i2c_addr"
-    success "  HAT spk_en: $hat_spk_en"
-    success "  HAT is_with_mic: $_is_with_mic"
-
-    # config soundcard
-    # =====================================
-    newline
-    if $_is_with_mic; then
-        info "config soundcard with mic ..."
-        dtoverlay_name=${DTOVERLAY_WITH_MIC}
-        audio_card_name=${AUDIO_CARD_NAME_WITH_MIC}
-        alsa_card_name=${ALSA_CARD_NAME_WITH_MIC}
-    else
-        info "config soundcard without mic ..."
-        dtoverlay_name=${DTOVERLAY_WITHOUT_MIC}
-        audio_card_name=${AUDIO_CARD_NAME_WITHOUT_MIC}
-        alsa_card_name=${ALSA_CARD_NAME_WITHOUT_MIC}
-    fi
-
-    # --- add dtoverlay to config.txt ---
-    newline
-    if $_is_with_mic; then
-        info "add dtoverlay ${DTOVERLAY_WITH_MIC} in ${CONFIG} ..."
-        if [ -e "${CONFIG}" ]; then
-            # dtoverlay=googlevoicehat-soundcard
-            # #dtoverlay=hifiberry-dac
-            if grep -q -e ".*dtoverlay=${DTOVERLAY_WITH_MIC}.*" "${CONFIG}"; then
-                echo "activated dtoverlay ${DTOVERLAY_WITH_MIC} ..."
-                sudo sed -i -e "s:.*dtoverlay=${DTOVERLAY_WITH_MIC}.*:dtoverlay=${DTOVERLAY_WITH_MIC}:g" "${CONFIG}"
-                sudo sed -i -e "s:.*dtoverlay=${DTOVERLAY_WITHOUT_MIC}.*:#dtoverlay=${DTOVERLAY_WITHOUT_MIC}:g" "${CONFIG}"
-            else
-                echo "add dtoverlay ${DTOVERLAY_WITH_MIC} ..."
-                echo "dtoverlay=${DTOVERLAY_WITH_MIC}" | sudo tee -a $CONFIG
-                sudo sed -i -e "s:.*dtoverlay=${DTOVERLAY_WITHOUT_MIC}.*:#dtoverlay=${DTOVERLAY_WITHOUT_MIC}:g" "${CONFIG}"
-            fi
-        else
-            error "${CONFIG} not found"
-        fi
-    else
-        info "add dtoverlay ${DTOVERLAY_WITHOUT_MIC} in ${CONFIG} ..."
-        if [ -e "${CONFIG}" ]; then
-            # dtoverlay=googlevoicehat-soundcard
-            # #dtoverlay=hifiberry-dac
-            if grep -q -e ".*dtoverlay=${DTOVERLAY_WITHOUT_MIC}.*" "${CONFIG}"; then
-                echo "activated dtoverlay ${DTOVERLAY_WITHOUT_MIC} ..."
-                sudo sed -i -e "s:.*dtoverlay=${DTOVERLAY_WITHOUT_MIC}.*:dtoverlay=${DTOVERLAY_WITHOUT_MIC}:g" "${CONFIG}"
-                sudo sed -i -e "s:.*dtoverlay=${DTOVERLAY_WITH_MIC}.*:#dtoverlay=${DTOVERLAY_WITH_MIC}:g" "${CONFIG}"
-            else
-                echo "add dtoverlay ${DTOVERLAY_WITHOUT_MIC} ..."
-                echo "dtoverlay=${DTOVERLAY_WITHOUT_MIC}" | sudo tee -a $CONFIG
-                sudo sed -i -e "s:.*dtoverlay=${DTOVERLAY_WITH_MIC}.*:#dtoverlay=${DTOVERLAY_WITH_MIC}:g" "${CONFIG}"
-            fi
-        else
-            error "${CONFIG} not found"
-        fi
-    fi
-
     # --- load dtoverlay ---
     newline
-    info "Trying to load dtoverlay ${dtoverlay_name} ..."
-    dtoverlay ${dtoverlay_name}
+    info "Trying to load dtoverlay ${DTOVERLAY} ..."
+    dtoverlay ${DTOVERLAY}
     sleep 1
 
     # --- get sound card ---
     info "get_soundcard_index ..."
-    card_index=$(get_soundcard_index $audio_card_name)
+    card_index=$(get_soundcard_index $AUDIO_CARD_NAME)
     if [[ -z "${card_index}" ]]; then
         error "soundcard index not found. Sometimes you need to reboot to activate the soundcard."
         ask_reboot "Would you like to reboot and retry now?"
         warning "Unfinished"
         exit 1
     else
-        success "soundcard ${audio_card_name} index: ${card_index}"
+        success "soundcard ${AUDIO_CARD_NAME} index: ${card_index}"
     fi
 
     # --- config /etc/asound.conf ---
     newline
-    if $_is_with_mic; then
-        info "config /etc/asound.conf with mic ..."
-        # write asound.conf
-        config_asound_with_mic
-    else
-        info "config /etc/asound.conf without mic ..."
-        # write asound.conf
-        config_asound_without_mic
-    fi
+    info "config /etc/asound.conf ..."
+    config_asound
+
     # restart alsa-utils
     sudo systemctl restart alsa-utils 2>/dev/null
     # set volume 100%
-    info "set ALSA speker volume to 100% ..."
-    play -n trim 0.0 0.5 2>/dev/null # play a short sound to to activate alsamixer speaker vol control
-    amixer -c ${audio_card_name} sset "${hat_name} speaker" 100%
+    info "set ALSA speaker volume to 100% ..."
+    play -n trim 0.0 0.5 2>/dev/null || true # play a short sound to activate alsamixer speaker vol control
+    # 尝试多种方式设置音量，避免因控制名称问题而失败
+    amixer -c ${AUDIO_CARD_NAME} sset "${HAT_NAME} Playback Volume" 100% 2>/dev/null || \
+    amixer -c ${AUDIO_CARD_NAME} sset "Playback" 100% 2>/dev/null || \
+    amixer -c ${AUDIO_CARD_NAME} sset "Master" 100% 2>/dev/null || \
+    info "Failed to set speaker volume, but continuing..."
+    
     if $_is_with_mic; then
-        info "set ALSA mic volume to 100% ..."
-        rec /tmp/rec_test.wav trim 0 0.5 2>/dev/null # record a short sound to activate alsamixer mic vol control
-        amixer -c ${audio_card_name} sset "${hat_name} mic" 100%
+        info "set ALSA microphone volume to 100% ..."
+        rec /tmp/rec_test.wav trim 0 0.5 2>/dev/null || true # record a short sound to activate alsamixer mic vol control
+        # 尝试多种方式设置麦克风音量
+        amixer -c ${AUDIO_CARD_NAME} sset "${HAT_NAME} Capture Volume" 100% 2>/dev/null || \
+        amixer -c ${AUDIO_CARD_NAME} sset "Capture" 100% 2>/dev/null || \
+        amixer -c ${AUDIO_CARD_NAME} sset "Mic" 100% 2>/dev/null || \
+        info "Failed to set microphone volume, but continuing..."
+        rm -f /tmp/rec_test.wav 2>/dev/null
     fi
 
     # --- config pulseaudio ---
@@ -580,39 +363,35 @@ install_soundcard_driver() {
 
     # run pulseaudio
     info "run pulseaudio ..."
-    # # stop pulseaudio
-    # $USER_RUN \
-    #     pulseaudio -k 2>/dev/null
-    # start pulseaudio
-    $USER_RUN \
-        pulseaudio -D 2>/dev/null
+    # start pulseaudio (只在用户会话存在时尝试)
+    if [ -d "/run/user/${USER_ID}" ]; then
+        $USER_RUN pulseaudio -D 2>/dev/null || true
+    else
+        info "User session not found, skipping pulseaudio start."
+    fi
 
     # get sink index
     newline
     info "get_sink_index ..."
-    sink_index=$(get_sink_index $alsa_card_name)
+    sink_index=$(get_sink_index $ALSA_CARD_NAME)
     if [[ -z "${sink_index}" ]]; then
         error "sink index not found."
         error "Sometimes you need to reboot to activate the soundcard."
-        ask_reboot "Would you like to reboot and retry now?"
     else
         success "sink index: ${sink_index}"
+        # set default sink
+        info "set default sink ..."
+        set_default_sink "${sink_index}"
     fi
 
-    # set default sink
-    info "set default sink ..."
-    set_default_sink "${sink_index}"
-
-    if $_is_with_mic; then
-        # get source index
-        info "get_source_index ..."
-        source_index=$(get_source_index $alsa_card_name)
-        if [[ -z "${source_index}" ]]; then
-            error "source index not found."
-            error "Sometimes you need to reboot to activate the soundcard."
-        else
-            success "source index: ${source_index}"
-        fi
+    # get source index
+    info "get_source_index ..."
+    source_index=$(get_source_index $ALSA_CARD_NAME)
+    if [[ -z "${source_index}" ]]; then
+        error "source index not found."
+        error "Sometimes you need to reboot to activate the soundcard."
+    else
+        success "source index: ${source_index}"
         # set default source
         info "set default source ..."
         set_default_source "${source_index}"
@@ -621,25 +400,21 @@ install_soundcard_driver() {
     # set default volume
     info "set default Pulseaudio volume to 100% ..."
     set_default_sink_volume 100
-    if $_is_with_mic; then
-        set_default_source_volume 100
-    fi
-
-    # --- open speaker ---
-    newline
-    info "open speaker ..."
-    # enable speaker
-    echo 1 > /sys/class/fusion_hat/fusion_hat/speaker
-    # play a short sound to fill data and avoid the speaker overheating
-    play -n trim 0.0 0.5 2>/dev/null
+    set_default_source_volume 100
 
     # --- test speaker ---
     newline
     if [ "$SKIP_TEST" = "false" ]; then
         if confirm "Do you wish to test speaker now?"; then
+            info "open speaker ..."
+            # enable speaker
+            echo 1 > /sys/class/fusion_hat/fusion_hat/speaker
+            # play a short sound to fill data and avoid the speaker overheating
+            play -n trim 0.0 0.5 2>/dev/null
+
             info "testing speaker ..."
             # test speaker
-            speaker-test -l3 -c2 -t wav
+            speaker-test -l3 -c 1 -t wav
         fi
     fi
 
@@ -661,9 +436,6 @@ for arg in "$@"; do
         ;;
     esac
 done
-
-# echo sink_index=$(get_sink_index)
-# echo source_index=$(get_source_index)
 
 install_soundcard_driver
 
