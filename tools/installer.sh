@@ -153,6 +153,10 @@ install() {
     COMMANDS=$1
     total=${#COMMANDS[@]}
     count=0
+
+    # Print empty line
+    echo -e ""
+
     for cmd in "${COMMANDS[@]}"; do
         eval $cmd
         count=$((count+1))
