@@ -15,7 +15,7 @@ INSTALLER_FAILED_PLAIN_TEXT="[✗]"
 INSTALLER_PLAIN_TEXT=false
 INSTALLER_ERROR_HAPPENED=false
 INSTALLER_ERROR_LOGS=""
-INSTALLER_CONFIG_TXT_FILE=$(config_txt_find)
+INSTALLER_CONFIG_TXT_FILE=""
 INSTALLER_COMMANDS=()
 INSTALLER_COMMANDS_COUNT=0
 INSTALLER_COMMAND_SPACE="&#&"
@@ -176,6 +176,13 @@ installer_init() {
     # Import config_txt_manager
     installer_import $INSTALLER_CONFIG_TXT_MANAGER_URL
     
+    # Find config.txt file
+    INSTALLER_CONFIG_TXT_FILE=$(config_txt_find)
+    if [ -z "$INSTALLER_CONFIG_TXT_FILE" ]; then
+        echo "Warning: config.txt file not found."
+        exit 1
+    fi
+
     # 注册信号处理函数
     trap installer_handle_interrupt SIGINT
     
