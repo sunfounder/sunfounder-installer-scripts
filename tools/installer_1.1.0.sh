@@ -8,10 +8,12 @@ USERNAME=${SUDO_USER:-$USER}
 HOME=$(getent passwd $USERNAME | cut -d: -f6)
 
 INSTALLER_LOG_FILE="/tmp/install.log"
-INSTALLER_SUCCESS="\033[32m[✓]\033[0m"
-INSTALLER_FAILED="\033[31m[✗]\033[0m"
-INSTALLER_SUCCESS_PLAIN_TEXT="[✓]"
-INSTALLER_FAILED_PLAIN_TEXT="[✗]"
+INSTALLER_SUCCESS_PLAIN_TEXT="✓"
+INSTALLER_FAILED_PLAIN_TEXT="✗"
+INSTALLER_SUCCESS="\033[32m$INSTALLER_SUCCESS_PLAIN_TEXT\033[0m"
+INSTALLER_FAILED="\033[31m$INSTALLER_FAILED_PLAIN_TEXT\033[0m"
+INSTALLER_SPINNER_STR="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+INSTALLER_SPINNER_DELAY=0.1
 INSTALLER_PLAIN_TEXT=false
 INSTALLER_ERROR_HAPPENED=false
 INSTALLER_ERROR_LOGS=""
@@ -31,8 +33,6 @@ installer_import() {
 installer_run() {
     local cmd="$1"
     local info="$2"
-    local delay=0.1
-    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'  # 更精细的旋转字符
     local i=0
     
     # 隐藏光标
@@ -44,13 +44,12 @@ installer_run() {
     
     # 显示旋转光标和详细信息
     while [ -d /proc/$pid ]; do
-        local char=${spinstr:$i:1}
+        local char=${INSTALLER_SPINNER_STR:$i:1}
         if [ "$INSTALLER_PLAIN_TEXT" != true ]; then
-            # echo -e "\033[36m[$char]\033[0m $info\r"
-            printf "\033[36m[%s]\033[0m %s\r" "$char" "$info"
+            printf "\033[36m%s\033[0m %s\r" "$char" "$info"
         fi
-        i=$(( (i+1) % ${#spinstr} ))
-        sleep $delay
+        i=$(( (i+1) % ${#INSTALLER_SPINNER_STR} ))
+        sleep $INSTALLER_SPINNER_DELAY
     done
     
     # 等待命令完成并显示结果
@@ -114,7 +113,7 @@ installer_log_title() {
         echo -e $1
     else
         echo -e "\033[34m$1\033[0m"
-        echo "[$1]" >> $INSTALLER_LOG_FILE
+        echo "$1" >> $INSTALLER_LOG_FILE
     fi
 }
 

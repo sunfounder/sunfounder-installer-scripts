@@ -24,6 +24,7 @@ PROGRESS_BAR_START_CHARACTER=""
 PROGRESS_BAR_FILL_CHARACTER="━" # ■
 PROGRESS_BAR_EMPTY_CHARACTER="━"
 PROGRESS_BAR_END_CHARACTER=""
+PROGRESS_BAR_MAX_LENGTH=80
 
 
 # Variables
@@ -205,6 +206,9 @@ progress_bar_print_bar_text() {
     fi
     local cols=$(tput cols)
     bar_size=$((cols-9-${#PROGRESS_BAR_PROGRESS_TITLE}-${#extra}))
+    if [ $bar_size -gt $PROGRESS_BAR_MAX_LENGTH ]; then
+        bar_size=$PROGRESS_BAR_MAX_LENGTH
+    fi
 
     local color="${PROGRESS_BAR_COLOR_FG}${PROGRESS_BAR_COLOR_BG}"
     if [ "$PROGRESS_BAR_PROGRESS_BLOCKED" = "true" ]; then
