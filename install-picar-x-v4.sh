@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
+INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
 
-# # Source Installer
-# curl -fsSL $INSTALLER_URL -o installer.sh
-# if [ $? -ne 0 ]; then
-#     log_failed "Network error, please check your internet connection."
-#     exit 1
-# fi
-# source installer.sh
-# rm installer.sh
-source tools/installer_1.1.0.sh
+# Source Installer
+curl -fsSL $INSTALLER_URL -o installer.sh
+if [ $? -ne 0 ]; then
+    log_failed "Network error, please check your internet connection."
+    exit 1
+fi
+source installer.sh
+rm installer.sh
+# source tools/installer_1.1.0.sh
 
 APT_INSTALL_LIST=(
     "git"
