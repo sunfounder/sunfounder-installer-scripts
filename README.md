@@ -22,8 +22,8 @@ Here are all install commands for easy access:
 # Install Fusion Hat
 curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-fusion-hat.sh | sudo bash
 
-# Install Picar-X
-curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-picar-x.sh | sudo bash
+# Install PiCar-X V4
+curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-picar-x-v4.sh | sudo bash
 
 # Install TFT 3.5 inch IPS TFT display
 curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-tft35ips.sh | sudo bash
@@ -32,6 +32,8 @@ curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scri
 wget https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh
 sudo bash setup_fusion_hat_audio.sh
 
+# Setup Robot Hat Audio - this need to run again after reboot
+curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_robot_hat_audio.sh | sudo bash
 ```
 ## Scripts
 

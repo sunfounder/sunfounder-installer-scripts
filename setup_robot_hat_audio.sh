@@ -5,6 +5,7 @@
 VERSION="0.0.7"
 USERNAME=${SUDO_USER:-$LOGNAME}
 USER_RUN="sudo -u ${USERNAME} env XDG_RUNTIME_DIR=/run/user/$(id -u ${USERNAME})"
+SKIP_TEST=false
 
 CONFIG="/boot/firmware/config.txt"
 # Fall back to the old config.txt path
@@ -645,10 +646,12 @@ install_soundcard_driver() {
 
     # --- test speaker ---
     newline
-    if confirm "Do you wish to test speaker now?"; then
-        info "testing speaker ..."
-        # test speaker
-        speaker-test -l3 -c2 -t wav
+    if [ "$SKIP_TEST" = "false" ]; then
+        if confirm "Do you wish to test speaker now?"; then
+            info "testing speaker ..."
+            # test speaker
+            speaker-test -l3 -c 1 -t wav
+        fi
     fi
 
     # --- Done ---
@@ -663,6 +666,9 @@ for arg in "$@"; do
     case $arg in
     --no-deps)
         _is_install_deps=false
+        ;;
+    --skip-test)
+        SKIP_TEST=true
         ;;
     esac
 done
