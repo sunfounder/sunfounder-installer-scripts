@@ -1,7 +1,11 @@
 
+# Default to GitHub URLs
 INSTALLER_PROGRESS_BAR_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/progress_bar_1.1.0.sh"
-
 INSTALLER_CONFIG_TXT_MANAGER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/config_txt_manager.sh"
+
+# Gitee fallback URLs
+INSTALLER_PROGRESS_BAR_URL_GITEE="https://gitee.com/sunfounder/sunfounder-installer-scripts/raw/main/tools/progress_bar_1.1.0.sh"
+INSTALLER_CONFIG_TXT_MANAGER_URL_GITEE="https://gitee.com/sunfounder/sunfounder-installer-scripts/raw/main/tools/config_txt_manager.sh"
 
 # Get username of 1000
 USERNAME=${SUDO_USER:-$USER}
@@ -21,6 +25,14 @@ INSTALLER_CONFIG_TXT_FILE=""
 INSTALLER_COMMANDS=()
 INSTALLER_COMMANDS_COUNT=0
 INSTALLER_COMMAND_SPACE="&#&"
+INSTALLER_GIT_REPO_URL="https://github.com/sunfounder/"
+INSTALLER_GIT_RAW_URL="https://raw.githubusercontent.com/sunfounder/"
+
+installer_check_url_accessibility() {
+    local url="$1"
+    curl -fs --max-time 5 "$url" > /dev/null 2>&1
+    return $?
+}
 
 installer_import() {
     local url="$1"
@@ -79,6 +91,24 @@ installer_check_root_privileges() {
     if [ "$EUID" -ne 0 ]; then
       echo "Please run as root"
       exit 1
+    fi
+}
+
+installer_update_git_urls() {
+    # Test GitHub accessibility
+    if installer_check_url_accessibility "https://github.com"; then
+        # GitHub is accessible
+        INSTALLER_GIT_REPO_URL="https://github.com/sunfounder/"
+        INSTALLER_GIT_RAW_URL="https://raw.githubusercontent.com/sunfounder/"
+        echo "Using GitHub repositories"
+    else
+        # GitHub is not accessible, switch to Gitee
+        INSTALLER_GIT_REPO_URL="https://gitee.com/sunfounder/"
+        INSTALLER_GIT_RAW_URL="https://gitee.com/sunfounder/"
+        # Update import URLs to Gitee
+        INSTALLER_PROGRESS_BAR_URL=$INSTALLER_PROGRESS_BAR_URL_GITEE
+        INSTALLER_CONFIG_TXT_MANAGER_URL=$INSTALLER_CONFIG_TXT_MANAGER_URL_GITEE
+        echo "GitHub not accessible, switching to Gitee repositories"
     fi
 }
 
@@ -167,9 +197,16 @@ CD() {
     installer_add_command CD "$@"
 }
 
+CLONE() {
+    installer_add_command CLONE "$@"
+    INSTALLER_COMMANDS_COUNT=$((INSTALLER_COMMANDS_COUNT+1))
+}
+
 installer_init() {
     # Check root privileges
     installer_check_root_privileges
+    # Update git URLs (check GitHub accessibility and switch to Gitee if needed)
+    installer_update_git_urls
     # Import progress bar
     installer_import $INSTALLER_PROGRESS_BAR_URL
     # Import config_txt_manager
@@ -182,7 +219,7 @@ installer_init() {
         exit 1
     fi
 
-    # 注册信号处理函数
+    # Register signal handler
     trap installer_handle_interrupt SIGINT
     
     installer_init_log_file
@@ -218,6 +255,11 @@ installer_install() {
             command_count=$((command_count+1))
         elif [ "${command[0]}" == "CD" ]; then
             cd "${command[1]}"
+        elif [ "${command[0]}" == "CLONE" ]; then
+            # Use the appropriate repository URL based on accessibility check
+            repo_url="${INSTALLER_GIT_REPO_URL}${command[1]}"
+            cmd="git clone -b ${command[2]} --depth=1 $repo_url"
+            installer_run "Cloning ${command[1]} ${command[2]}" $cmd
         fi
         progress_bar_draw $(((command_count+1)*100/INSTALLER_COMMANDS_COUNT))
     done
