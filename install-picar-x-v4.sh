@@ -34,7 +34,7 @@ RUN "apt-get install -y ${APT_INSTALL_LIST[*]}" "Install apt dependencies"
 TITLE "Install robot-hat"
 CD $HOME
 RUN "rm -rf $HOME/robot-hat" "Remove robot-hat if exists"
-RUN "git clone -b 2.5.x --depth=1 https://github.com/sunfounder/robot-hat.git" "Clone robot-hat"
+CLONE "robot-hat" "2.6.x"
 if [ $? -ne 0 ]; then
     log_failed "Failed to clone robot-hat."
     exit 1
@@ -46,7 +46,7 @@ RUN "python3 install.py" "Install robot-hat"
 TITLE "Install vilib"
 CD $HOME
 RUN "rm -rf $HOME/vilib" "Remove vilib if exists"
-RUN "git clone --depth=1 https://github.com/sunfounder/vilib.git" "Clone vilib"
+CLONE "vilib" "main"
 if [ $? -ne 0 ]; then
     log_failed "Failed to clone vilib."
     exit 1
@@ -58,14 +58,14 @@ RUN "python3 install.py" "Install vilib"
 TITLE "Install picar-x"
 CD $HOME
 RUN "rm -rf $HOME/picar-x" "Remove $HOME/picar-x if exist"
-RUN "git clone -b 3.0.x --depth=1 https://github.com/sunfounder/picar-x.git" "Clone picar-x"
+CLONE "picar-x" "3.0.x"
 if [ $? -ne 0 ]; then
     log_failed "Failed to clone picar-x."
     exit 1
 fi
 RUN "chown -R $USERNAME:$USERNAME $HOME/picar-x" "Change ownership of picar-x to $USERNAME"
 CD $HOME/picar-x
-RUN "pip3 install ./ --break-system-packages" "Install picar-x"
+RUN "pip3 install ./ --break-system-packages --force-reinstall --ignore-installed" "Install picar-x"
 
 # Create dir for config
 RUN "mkdir -p /opt/picar-x" "Create dir for config"
@@ -79,22 +79,22 @@ RUN "chmod 755 /opt/setup_robot_hat_audio.sh" "Change permissions of audio scrip
 RUN "/opt/setup_robot_hat_audio.sh --skip-test" "Setup audio script"
 
 # Install picar-x-app
-# TITLE "Install picar-x-app"
-# RUN "echo \"[Unit]
-# Description=picarx service
-# After=multi-user.target
+TITLE "Install picar-x-app"
+RUN "echo \"[Unit]
+Description=picarx service
+After=multi-user.target
 
-# [Service]
-# Type=simple
-# WorkingDirectory=/home/$USERNAME/picar-x/app
-# ExecStart=python3 app.py
+[Service]
+Type=simple
+WorkingDirectory=/home/$USERNAME/picar-x/app
+ExecStart=python3 app.py
 
-# [Install]
-# WantedBy=multi-user.target\" > /etc/systemd/system/picar-x-app.service" "Create picar-x-app service"
-# RUN "systemctl enable picar-x-app.service" "Enable picar-x-app service"
-# RUN "systemctl daemon-reload" "Reload systemd daemon"
-# RUN "systemctl start picar-x-app.service" "Start picar-x-app service"
-# TITLE "picar-x-app installed"
+[Install]
+WantedBy=multi-user.target\" > /etc/systemd/system/picar-x-app.service" "Create picar-x-app service"
+RUN "systemctl enable picar-x-app.service" "Enable picar-x-app service"
+RUN "systemctl daemon-reload" "Reload systemd daemon"
+RUN "systemctl start picar-x-app.service" "Start picar-x-app service"
+TITLE "picar-x-app installed"
 
 installer_install
 
