@@ -5,7 +5,7 @@ INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer
 # Source Installer
 curl -fsSL $INSTALLER_URL -o installer.sh
 if [ $? -ne 0 ]; then
-    log_failed "Network error, please check your internet connection."
+    installer_log_failed "Network error, please check your internet connection."
     exit 1
 fi
 source installer.sh
@@ -28,7 +28,6 @@ TITLE "Install PiCar-X V4\n"
 TITLE "Install dependencies"
 RUN "apt-get update" "Update apt"
 RUN "apt-get install -y ${APT_INSTALL_LIST[*]}" "Install apt dependencies"
-# sudo apt install -y libatlas-base-dev libjasper-dev libqtgui4 libqt4-test
 
 # Install robot-hat
 TITLE "Install robot-hat"
@@ -36,7 +35,7 @@ CD $HOME
 RUN "rm -rf $HOME/robot-hat" "Remove robot-hat if exists"
 CLONE "robot-hat" "2.6.x"
 if [ $? -ne 0 ]; then
-    log_failed "Failed to clone robot-hat."
+    installer_log_failed "Failed to clone robot-hat."
     exit 1
 fi
 CD $HOME/robot-hat
@@ -48,7 +47,7 @@ CD $HOME
 RUN "rm -rf $HOME/vilib" "Remove vilib if exists"
 CLONE "vilib" "main"
 if [ $? -ne 0 ]; then
-    log_failed "Failed to clone vilib."
+    installer_log_failed "Failed to clone vilib."
     exit 1
 fi
 CD $HOME/vilib
@@ -60,7 +59,7 @@ CD $HOME
 RUN "rm -rf $HOME/picar-x" "Remove $HOME/picar-x if exist"
 CLONE "picar-x" "3.0.x"
 if [ $? -ne 0 ]; then
-    log_failed "Failed to clone picar-x."
+    installer_log_failed "Failed to clone picar-x."
     exit 1
 fi
 RUN "chown -R $USERNAME:$USERNAME $HOME/picar-x" "Change ownership of picar-x to $USERNAME"
@@ -80,20 +79,9 @@ RUN "/opt/setup_robot_hat_audio.sh --skip-test" "Setup audio script"
 
 # Install picar-x-app
 TITLE "Install picar-x-app"
-RUN "echo \"[Unit]
-Description=picarx service
-After=multi-user.target
-
-[Service]
-Type=simple
-WorkingDirectory=/home/$USERNAME/picar-x/app
-ExecStart=python3 app.py
-
-[Install]
-WantedBy=multi-user.target\" > /etc/systemd/system/picar-x-app.service" "Create picar-x-app service"
+RUN "echo '[Unit]' > /etc/systemd/system/picar-x-app.service && echo 'Description=picarx service' >> /etc/systemd/system/picar-x-app.service && echo 'After=multi-user.target' >> /etc/systemd/system/picar-x-app.service && echo '' >> /etc/systemd/system/picar-x-app.service && echo '[Service]' >> /etc/systemd/system/picar-x-app.service && echo 'Type=simple' >> /etc/systemd/system/picar-x-app.service && echo 'WorkingDirectory=/home/$USERNAME/picar-x/app' >> /etc/systemd/system/picar-x-app.service && echo 'ExecStart=python3 app.py' >> /etc/systemd/system/picar-x-app.service && echo '' >> /etc/systemd/system/picar-x-app.service && echo '[Install]' >> /etc/systemd/system/picar-x-app.service && echo 'WantedBy=multi-user.target' >> /etc/systemd/system/picar-x-app.service" "Create picar-x-app service"
 RUN "systemctl enable picar-x-app.service" "Enable picar-x-app service"
 RUN "systemctl daemon-reload" "Reload systemd daemon"
-RUN "systemctl start picar-x-app.service" "Start picar-x-app service"
 TITLE "picar-x-app installed"
 
 installer_install
