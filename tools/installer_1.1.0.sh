@@ -259,7 +259,7 @@ installer_install() {
             # Use the appropriate repository URL based on accessibility check
             repo_url="${INSTALLER_GIT_REPO_URL}${command[1]}"
             cmd="git clone -b ${command[2]} --depth=1 $repo_url"
-            installer_run "Cloning ${command[1]} ${command[2]}" $cmd
+            installer_run "${cmd}" "Cloning ${command[1]} ${command[2]}"
         fi
         progress_bar_draw $(((command_count+1)*100/INSTALLER_COMMANDS_COUNT))
     done
