@@ -11,8 +11,6 @@ fi
 source installer.sh
 rm installer.sh
 
-source ./tools/progress_bar.sh
-
 APT_INSTALL_LIST=(
     "git"
 )
