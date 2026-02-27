@@ -2,10 +2,9 @@
 
 # global variables
 # =================================================================
-VERSION="0.0.7"
+VERSION="0.0.4"
 USERNAME=${SUDO_USER:-$LOGNAME}
 USER_RUN="sudo -u ${USERNAME} env XDG_RUNTIME_DIR=/run/user/$(id -u ${USERNAME})"
-SKIP_TEST=false
 
 CONFIG="/boot/firmware/config.txt"
 # Fall back to the old config.txt path
@@ -15,58 +14,33 @@ fi
 
 ASOUND_CONF="/etc/asound.conf"
 
-# ----- hat without onboard mic -----
+# ----- robot hat without onboard mic -----
 DTOVERLAY_WITHOUT_MIC="hifiberry-dac"
 AUDIO_CARD_NAME_WITHOUT_MIC="sndrpihifiberry"
 ALSA_CARD_NAME_WITHOUT_MIC="snd_rpi_hifiberry_dac"
 
-# ----- hat with onboard mic -----
+# ----- robot hat with onboard mic -----
 DTOVERLAY_WITH_MIC="googlevoicehat-soundcard"
 AUDIO_CARD_NAME_WITH_MIC="sndrpigooglevoi"
 ALSA_CARD_NAME_WITH_MIC="snd_rpi_googlevoicehat_soundcar"
 
-# ----- hat ID EEPROME -----
+SOFTVOL_SPEAKER_NAME="robot-hat speaker"
+SOFTVOL_MIC_NAME="robot-hat mic"
+
+# ----- robot hat 5 -----
 HAT_DEVICE_TREE="/proc/decvice-tree/"
 HAT_UUIDs=(
-    "9daeea78-0000-0774-000a-582369ac3e02" # fusion_hat
-    "9daeea78-0000-076e-003c-582369ac3e02" # robothat6-beta
-    "9daeea78-0000-076e-0032-582369ac3e02" # robothat5
+    "9daeea78-0000-076e-0032-582369ac3e02",
 )
-HAT_NAMEs=(
-    "fusion_hat"
-    "robothat6-beta"
-    "robothat5"
-)
-HAT_SPK_ENs=(
-    "I2C_0x31"
-    "I2C_0x31"
-    20
-)
-HAT_I2C_ADDRs=(
-    "0x17"
-    "0x17"
-    "0x14"
-)
-HAT_IS_WITH_MICs=(
-    true
-    true
-    false
-)
-SPK_EN_REG_ADDR="0x31"
+ROBOTHAT5_PRODUCT_VER=50
+robothat_product=""
+robothat_product_id=0
+robothat_product_ver=0
+robothat_uuid=""
+robothat_vendor=""
 
 # ---------------------------
-hat_index=0
-hat_uuid=""
-hat_name=""
-hat_spk_en=""
-hat_i2c_addr=""
-
-hat_product=""
-hat_product_id=0
-hat_product_ver=0
-hat_uuid=""
-hat_vendor=""
-
+robothat_spk_en=20 # robothat4 GPIO20, robothat5 GPIO12
 _is_install_deps=true
 _is_with_mic=true
 dtoverlay_name=""
@@ -150,7 +124,7 @@ config_asound_without_mic() {
         sudo cp "${ASOUND_CONF}" "${ASOUND_CONF}.old"
     fi
 
-    sudo cat >"${ASOUND_CONF}" <<EOF
+    cat >"${ASOUND_CONF}" <<EOF
 
 pcm.speaker {
     type hw
@@ -180,25 +154,25 @@ pcm.softvol {
     type softvol
     slave.pcm "dmixer"
     control {
-        name "${hat_name} speaker Playback Volume"
+        name "${SOFTVOL_SPEAKER_NAME} Playback Volume"
         card ${AUDIO_CARD_NAME_WITHOUT_MIC}
     }
     min_dB -51.0
     max_dB 0.0
 }
 
-pcm.hat {
+pcm.robothat {
     type plug
     slave.pcm "softvol"
 }
 
-ctl.hat {
+ctl.robothat {
     type hw
     card ${AUDIO_CARD_NAME_WITHOUT_MIC}
 }
 
-pcm.!default hat
-ctl.!default hat
+pcm.!default robothat
+ctl.!default robothat
 
 EOF
 }
@@ -212,9 +186,12 @@ config_asound_with_mic() {
         sudo cp "${ASOUND_CONF}" "${ASOUND_CONF}.old"
     fi
 
-    sudo cat >"${ASOUND_CONF}" <<EOF
+    if [ $robothat_product_ver -ge ${ROBOTHAT5_PRODUCT_VER} ]; then
 
-pcm.hat {
+        #
+        sudo cat >"${ASOUND_CONF}" <<EOF
+
+pcm.robothat {
     type asym
     playback.pcm {
         type plug
@@ -257,7 +234,7 @@ pcm.speaker {
         pcm "dmixer"
     }
     control {
-        name "${hat_name} speaker Playback Volume"
+        name "${SOFTVOL_SPEAKER_NAME} Playback Volume"
         card ${AUDIO_CARD_NAME_WITH_MIC}
     }
     min_dB -51.0
@@ -276,22 +253,63 @@ pcm.mic {
         pcm "mic_hw"
     }
     control {
-        name "${hat_name} mic Capture Volume"
+        name "${SOFTVOL_MIC_NAME} Capture Volume"
         card ${AUDIO_CARD_NAME_WITH_MIC}
     }
     min_dB -26.0
     max_dB 25.0
 }
 
-ctl.hat {
+ctl.robothat {
     type hw
     card ${AUDIO_CARD_NAME_WITH_MIC}
 }
 
-pcm.!default hat
-ctl.!default hat
+pcm.!default robothat
+ctl.!default robothat
 
 EOF
+
+    else
+        sudo cat >"${ASOUND_CONF}" <<EOF
+
+pcm.robothat {
+    type asym
+    playback.pcm {
+        type plug
+        slave.pcm "speaker"
+    }
+}
+
+pcm.speaker_hw {
+    type hw
+    card ${AUDIO_CARD_NAME_WITH_MIC}
+    device 0
+}
+
+pcm.speaker {
+    type softvol
+    slave {
+        pcm "speaker_hw"
+    }
+    control {
+        name "${SOFTVOL_SPEAKER_NAME} Playback Volume"
+        card ${AUDIO_CARD_NAME_WITH_MIC}
+    }
+    min_dB -51.0
+    max_dB 0.0
+}
+
+ctl.robothat {
+    type hw
+    card ${AUDIO_CARD_NAME_WITH_MIC}
+}
+
+pcm.!default robothat
+ctl.!default robothat
+
+EOF
+    fi
 
 }
 
@@ -363,8 +381,8 @@ set_default_source_volume() {
         pactl set-source-volume @DEFAULT_SOURCE@ ${volume}%
 }
 
-check_hat() {
-    # find hat device-tree directory
+check_robothat() {
+    # find robothat device-tree directory
     hat_dirs=$(find /proc/device-tree/*hat* -type d)
     # echo $hat_dirs
     hat_dir=""
@@ -378,48 +396,40 @@ check_hat() {
 
         # ----- whether uuid in HAT_UUIDs -----
         # echo HAT_UUIDs:${HAT_UUIDs[@]}
-        # if [[ -n "${uuid}" && "${HAT_UUIDs[@]}" =~ "${uuid}" ]]; then
-        #     hat_dir=$dir
-        #     break
-        # fi
-
-        for i in "${!HAT_UUIDs[@]}"; do
-            if [[ "${HAT_UUIDs[$i]}" == "${uuid}" ]]; then
-                hat_index=$i
-                hat_dir=$dir
-                break
-            fi
-        done
+        if [[ -n "${uuid}" && "${HAT_UUIDs[@]}" =~ "${uuid}" ]]; then
+            hat_dir=$dir
+            break
+        fi
     done
 
     echo hat_dir:$hat_dir
     if [[ -z "${hat_dir}" ]]; then
-        echo "No HAT info found in /proc/device-tree"
+        echo "No robothat 5 found"
         return
     fi
 
-    # read hat info
-    hat_product=$(tr -d '\0' <"$hat_dir"/product)
-    hat_product_id_hex=$(tr -d '\0' <"$hat_dir"/product_id)
-    hat_product_ver_hex=$(tr -d '\0' <"$hat_dir"/product_ver)
-    let hat_product_id=$(printf "%d" $hat_product_id_hex)
-    let hat_product_ver=$(printf "%d" $hat_product_ver_hex)
+    # read robothat info
+    robothat_product=$(tr -d '\0' <"$hat_dir"/product)
+    robothat_product_id_hex=$(tr -d '\0' <"$hat_dir"/product_id)
+    robothat_product_ver_hex=$(tr -d '\0' <"$hat_dir"/product_ver)
+    let robothat_product_id=$(printf "%d" $robothat_product_id_hex)
+    let robothat_product_ver=$(printf "%d" $robothat_product_ver_hex)
 
-    hat_uuid=$(tr -d '\0' <"$hat_dir"/uuid)
-    hat_vendor=$(tr -d '\0' <"$hat_dir"/vendor)
+    robothat_uuid=$(tr -d '\0' <"$hat_dir"/uuid)
+    robothat_vendor=$(tr -d '\0' <"$hat_dir"/vendor)
 
     success "Found:"
-    success "  Product: $hat_product"
-    success "  Product ID: $hat_product_id ($hat_product_id_hex)"
-    success "  Version: $hat_product_ver ($hat_product_ver_hex)"
-    success "  Vendor: $hat_vendor"
-    success "  UUID: $hat_uuid"
+    success "  Product: $robothat_product"
+    success "  Product ID: $robothat_product_id ($robothat_product_id_hex)"
+    success "  Version: $robothat_product_ver ($robothat_product_ver_hex)"
+    success "  Vendor: $robothat_vendor"
+    success "  UUID: $robothat_uuid"
 }
 
 # main_fuction
 # ================================================================================
 install_soundcard_driver() {
-    info "install hat soundcard driver >>>"
+    info "install robot-hat soundcard driver >>>"
     info "script version: $VERSION"
     info "user: $USERNAME"
 
@@ -434,46 +444,27 @@ install_soundcard_driver() {
         info "apt update..."
         apt update
 
-        info "install i2c-tools ..."
-        apt install i2c-tools -y
-
-        info "install alsa-utils ..."
-        # alsa-utils includes:
-        #  alsamixer, aplay, arecord, amixer, speaker-test
-        apt install alsa-utils -y
-
-        info "install pulseaudio ..."
-        apt install pulseaudio -y
-
-        info "install pulseaudio-utils ..."
-        apt install pulseaudio-utils -y
-
-        info "install jq ..."
-        apt install jq -y
-
-        info "install sox ..."
-        apt install sox -y
+        info "install alsa-utils pulseaudio pulseaudio-utils jq sox..."
+        apt install alsa-utils pulseaudio pulseaudio-utils jq sox -y
     else
         info "skip install deps ..."
     fi
 
-    # detect hat
+    # detect robothat 5
     # =====================================
     newline
-    info "check hat ..."
-    check_hat
+    info "check robothat 5 ..."
+    check_robothat
 
-    hat_name=${HAT_NAMEs[$hat_index]}
-    hat_spk_en=${HAT_SPK_ENs[$hat_index]}
-    hat_i2c_addr=${HAT_I2C_ADDRs[$hat_index]}
-    _is_with_mic=${HAT_IS_WITH_MICs[$hat_index]}
-
-    newline
-    success "  HAT index: $hat_index"
-    success "  HAT name: $hat_name"
-    success "  HAT i2c_addr: $hat_i2c_addr"
-    success "  HAT spk_en: $hat_spk_en"
-    success "  HAT is_with_mic: $_is_with_mic"
+    if [ $robothat_product_ver -ge ${ROBOTHAT5_PRODUCT_VER} ]; then
+        robothat_spk_en=12
+        _is_with_mic=true
+    else
+        robothat_spk_en=20
+        _is_with_mic=false
+    fi
+    success "robothat_spk_en: ${robothat_spk_en}"
+    success "is_with_mic: ${_is_with_mic}"
 
     # config soundcard
     # =====================================
@@ -562,11 +553,11 @@ install_soundcard_driver() {
     # set volume 100%
     info "set ALSA speker volume to 100% ..."
     play -n trim 0.0 0.5 2>/dev/null # play a short sound to to activate alsamixer speaker vol control
-    amixer -c ${audio_card_name} sset "${hat_name} speaker" 100%
+    amixer -c ${audio_card_name} sset "${SOFTVOL_SPEAKER_NAME}" 100%
     if $_is_with_mic; then
         info "set ALSA mic volume to 100% ..."
         rec /tmp/rec_test.wav trim 0 0.5 2>/dev/null # record a short sound to activate alsamixer mic vol control
-        amixer -c ${audio_card_name} sset "${hat_name} mic" 100%
+        amixer -c ${audio_card_name} sset "${SOFTVOL_MIC_NAME}" 100%
     fi
 
     # --- config pulseaudio ---
@@ -594,7 +585,6 @@ install_soundcard_driver() {
     if [[ -z "${sink_index}" ]]; then
         error "sink index not found."
         error "Sometimes you need to reboot to activate the soundcard."
-        ask_reboot "Would you like to reboot and retry now?"
     else
         success "sink index: ${sink_index}"
     fi
@@ -625,39 +615,32 @@ install_soundcard_driver() {
         set_default_source_volume 100
     fi
 
-    # --- open speaker ---
-    newline
-    info "open speaker ..."
-    # enable speaker
-    if [ $hat_spk_en == "I2C_0x31" ]; then
-        info "i2cset -y 1 ${hat_i2c_addr} ${SPK_EN_REG_ADDR} 1"
-        i2cset -y 1 ${hat_i2c_addr} ${SPK_EN_REG_ADDR} 1
-    else
-        if command -v pinctrl >/dev/null; then
-            pinctrl set $hat_spk_en op dh
-        elif command -v raspi-gpio >/dev/null; then
-            raspi-gpio set $hat_spk_en op dh
-        else
-            warning "Could not find pinctrl or raspi-gpio command."
-        fi
-    fi
-    # play a short sound to fill data and avoid the speaker overheating
-    play -n trim 0.0 0.5 2>/dev/null
-
     # --- test speaker ---
-    newline
-    if [ "$SKIP_TEST" = "false" ]; then
+    if [ "$SKIP_TEST" != "true" ]; then
+        newline
         if confirm "Do you wish to test speaker now?"; then
             info "testing speaker ..."
+            # enable speaker
+            if command -v pinctrl >/dev/null; then
+                pinctrl set $robothat_spk_en op dh
+                # play a short sound to fill data and avoid the speaker overheating
+                play -n trim 0.0 0.5 2>/dev/null
+            elif command -v raspi-gpio >/dev/null; then
+                raspi-gpio set $robothat_spk_en op dh
+                # play a short sound to fill data and avoid the speaker overheating
+                play -n trim 0.0 0.5 2>/dev/null
+            else
+                warning "Could not find pinctrl or raspi-gpio command."
+            fi
+
             # test speaker
-            speaker-test -l3 -c 1 -t wav
+            speaker-test -l3 -c 2 -t wav
         fi
     fi
 
     # --- Done ---
     newline
     success "All done!"
-    newline
 }
 
 # main
@@ -672,9 +655,6 @@ for arg in "$@"; do
         ;;
     esac
 done
-
-# echo sink_index=$(get_sink_index)
-# echo source_index=$(get_source_index)
 
 install_soundcard_driver
 
