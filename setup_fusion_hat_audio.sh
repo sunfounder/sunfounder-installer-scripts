@@ -2,7 +2,7 @@
 
 # global variables
 # =================================================================
-VERSION="1.0.0"
+VERSION="1.0.1"
 USERNAME=${SUDO_USER:-$LOGNAME}
 # 安全地获取用户 ID
 USER_ID=$(id -u "${USERNAME}" 2>/dev/null || echo "1000")
