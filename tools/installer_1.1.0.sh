@@ -112,6 +112,13 @@ installer_update_git_urls() {
     fi
 }
 
+installer_git_clone() {
+    # Use the appropriate repository URL based on accessibility check
+    repo_url="${INSTALLER_GIT_REPO_URL}${1}"
+    cmd="git clone -b ${2} --depth=1 $repo_url"
+    installer_run "${cmd}" "Cloning ${1} ${2}"
+}
+
 # Ctrl+C信号处理函数
 installer_handle_interrupt() {
     # 恢复光标（如果之前隐藏了）
@@ -258,10 +265,7 @@ installer_install() {
         elif [ "${command[0]}" == "CD" ]; then
             cd "${command[1]}"
         elif [ "${command[0]}" == "CLONE" ]; then
-            # Use the appropriate repository URL based on accessibility check
-            repo_url="${INSTALLER_GIT_REPO_URL}${command[1]}"
-            cmd="git clone -b ${command[2]} --depth=1 $repo_url"
-            installer_run "${cmd}" "Cloning ${command[1]} ${command[2]}"
+            installer_git_clone "${command[1]}" "${command[2]}"
         fi
         progress_bar_draw $(((command_count+1)*100/INSTALLER_COMMANDS_COUNT))
     done
