@@ -116,7 +116,9 @@ installer_update_git_urls() {
 installer_handle_interrupt() {
     # 恢复光标（如果之前隐藏了）
     tput cnorm
-    progress_bar_trap_on_interrupt
+    if declare -f progress_bar_trap_on_interrupt > /dev/null 2>&1; then
+        progress_bar_trap_on_interrupt
+    fi
     
     if [ "$INSTALLER_ERROR_HAPPENED" = true ]; then
         echo -e "\n\033[31mUser interrupted. Error logs:\033[0m"
