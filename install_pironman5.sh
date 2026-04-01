@@ -9,7 +9,7 @@ declare -A products=(
 INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
 
 # Source Installer
-curl -fsSL $INSTALLER_URL -o installer.sh
+curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" $INSTALLER_URL -o installer.sh
 if [ $? -ne 0 ]; then
     log_failed "Network error, please check your internet connection."
     exit 1
@@ -21,18 +21,25 @@ installer_check_root_privileges
 installer_update_git_urls
 
 # Product selection
+product_names=("${products[@]}")
+product_keys=("${!products[@]}")
+
 echo "Please select your product:"
-PS3="#? "
-select choice in "${products[@]}"; do
-    case $REPLY in
-        1) branch_name="base"; product_name="Pironman 5"; break ;;
-        2) branch_name="mini"; product_name="Pironman 5 Mini"; break ;;
-        3) branch_name="max"; product_name="Pironman 5 Max"; break ;;
-        4) branch_name="pro-max"; product_name="Pironman 5 Pro Max"; break ;;
-        *) echo "Invalid option, please try again." ;;
-    esac
+for i in "${!product_names[@]}"; do
+    echo "$((i+1))) ${product_names[$i]}"
 done
-PS3=""
+
+while true; do
+    read -p "#? " reply
+    if [[ "$reply" =~ ^[1-9]$ ]] && [ "$reply" -le "${#product_names[@]}" ] 2>/dev/null; then
+        idx=$((reply-1))
+        branch_name="${product_keys[$idx]}"
+        product_name="${product_names[$idx]}"
+        break
+    else
+        echo "Invalid option, please try again."
+    fi
+done
 
 installer_log_title "\nPreparing installation for ${product_name}"
 
