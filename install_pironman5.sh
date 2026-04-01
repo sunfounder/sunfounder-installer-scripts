@@ -24,17 +24,13 @@ installer_update_git_urls
 echo "Please select your product:"
 PS3="#? "
 select choice in "${products[@]}"; do
-    if [ -z "$choice" ]; then
-        echo "Invalid option, please try again."
-        continue
-    fi
-    for branch in "${!products[@]}"; do
-        if [[ "${products[$branch]}" = "$choice" ]]; then
-            branch_name="$branch"
-            product_name="$choice"
-            break 2
-        fi
-    done
+    case $REPLY in
+        1) branch_name="base"; product_name="Pironman 5"; break ;;
+        2) branch_name="mini"; product_name="Pironman 5 Mini"; break ;;
+        3) branch_name="max"; product_name="Pironman 5 Max"; break ;;
+        4) branch_name="pro-max"; product_name="Pironman 5 Pro Max"; break ;;
+        *) echo "Invalid option, please try again." ;;
+    esac
 done
 PS3=""
 
