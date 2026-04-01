@@ -28,6 +28,9 @@ curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scri
 # Install TFT 3.5 inch IPS TFT display
 curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-tft35ips.sh | sudo bash
 
+# Install Pironman 5 display
+curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh | sudo bash
+
 # Setup Fusion Hat Audio - this need to run again after reboot
 wget https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh
 sudo bash setup_fusion_hat_audio.sh
