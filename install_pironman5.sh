@@ -8,8 +8,8 @@ declare -A products=(
 
 INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
 
-# Source Installer
-curl -fsSL -H "Cache-Control: no-cache" -H "Pragma: no-cache" $INSTALLER_URL -o installer.sh
+# Source Installer (add timestamp to bypass cache)
+curl -fsSL "$INSTALLER_URL?$(date +%s)" -o installer.sh
 if [ $? -ne 0 ]; then
     log_failed "Network error, please check your internet connection."
     exit 1
@@ -24,32 +24,35 @@ installer_update_git_urls
 product_names=("${products[@]}")
 product_keys=("${!products[@]}")
 
-echo "test a1"
 echo "Please select your product:"
 for i in "${!product_names[@]}"; do
     echo "$((i+1))) ${product_names[$i]}"
 done
 
 while true; do
-    read -p "#? " reply
+    if [ -t 0 ]; then
+        read -p "#? " reply
+    else
+        read reply < /dev/tty
+    fi
     if [[ "$reply" =~ ^[1-9]$ ]] && [ "$reply" -le "${#product_names[@]}" ] 2>/dev/null; then
         idx=$((reply-1))
         branch_name="${product_keys[$idx]}"
         product_name="${product_names[$idx]}"
         break
     else
-        echo "Invalid option, please try again."
+        echo "Invalid option, please try again." >&2
     fi
 done
 
 installer_log_title "\nPreparing installation for ${product_name}"
 
-apt-get install git python3 python3-pip python3-setuptools -y
+installer_run "apt-get install git python3 python3-pip python3-setuptools -y" "Installing dependencies..."
 
 cd ~
 rm -rf ~/pironman5
 # git clone -b $branch_name https://github.com/sunfounder/pironman5.git --depth 1
-CLONE pironman5 $branch_name
+installer_git_clone pironman5 $branch_name
 cd ~/pironman5
 
 python3 install.py
