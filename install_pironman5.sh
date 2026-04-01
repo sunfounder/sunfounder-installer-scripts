@@ -24,6 +24,7 @@ installer_update_git_urls
 product_names=("${products[@]}")
 product_keys=("${!products[@]}")
 
+echo "test a1"
 echo "Please select your product:"
 for i in "${!product_names[@]}"; do
     echo "$((i+1))) ${product_names[$i]}"
