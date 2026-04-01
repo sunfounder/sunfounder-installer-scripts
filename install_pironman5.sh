@@ -22,7 +22,12 @@ installer_update_git_urls
 
 # Product selection
 echo "Please select your product:"
+PS3="#? "
 select choice in "${products[@]}"; do
+    if [ -z "$choice" ]; then
+        echo "Invalid option, please try again."
+        continue
+    fi
     for branch in "${!products[@]}"; do
         if [[ "${products[$branch]}" = "$choice" ]]; then
             branch_name="$branch"
@@ -31,6 +36,7 @@ select choice in "${products[@]}"; do
         fi
     done
 done
+PS3=""
 
 installer_log_title "\nPreparing installation for ${product_name}"
 
