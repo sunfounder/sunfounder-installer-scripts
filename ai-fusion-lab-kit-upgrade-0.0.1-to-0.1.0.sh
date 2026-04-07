@@ -18,3 +18,5 @@ sudo mkdir /opt/vosk_models
 sudo chown -R pi:pi /opt/vosk_models
 sudo mkdir /opt/piper_models
 sudo chown -R pi:pi /opt/piper_models
+
+echo "Upgrade completed"
