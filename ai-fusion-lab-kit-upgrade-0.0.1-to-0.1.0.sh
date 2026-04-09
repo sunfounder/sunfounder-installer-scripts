@@ -1,6 +1,8 @@
 
 #!/bin/bash
 
+set -e
+
 # Check root permission
 if [ "$UID" -ne 0 ]; then
     echo "Please run this script as root"
@@ -25,12 +27,15 @@ echo "Upgrade from 0.0.1 to 0.1.0"
 
 echo "Pull latest code from GitHub"
 
-cd $HOME/ai-lab-kit
-git pull
-cd $HOME
+cd "$HOME/ai-lab-kit" || exit 1
+if ! git pull; then
+    echo "Error: git pull failed"
+    exit 1
+fi
+cd "$HOME" || exit 1
 
-echo "Install dependencied for YOLO"
-pip install mediapipe ultralytics pyyaml requests psutil polars tqdm matplotlib seaborn --break-system-packages
+echo "Install dependencies for YOLO"
+pip3 install mediapipe ultralytics pyyaml requests psutil polars tqdm matplotlib seaborn --break-system-packages
 
 # Install CPU version of PyTorch (specify CPU source)
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cpu --break-system-packages
