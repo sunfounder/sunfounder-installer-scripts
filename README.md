@@ -32,8 +32,7 @@ curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scri
 curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/ai-fusion-lab-kit-upgrade-0.0.1-to-0.1.0.sh | sudo bash
 
 # Install Pironman 5
-curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh" -o install_pironman5.sh
-sudo bash install_pironman5.sh
+curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh" | sudo bash
 
 # Setup Fusion Hat Audio - this need to run again after reboot
 wget https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh
