@@ -224,6 +224,7 @@ TITLE "Clone pironman5 repository"
 CD ~
 RUN "rm -rf ${HOME}/pironman5" "Remove existing pironman5 directory"
 CLONE "pironman5" "$branch"
+RUN "chown -R ${USERNAME}:${USERNAME} ${HOME}/pironman5" "Set repo ownership"
 CD ~/pironman5
 
 # --- Pre-install scripts ---
