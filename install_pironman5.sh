@@ -352,7 +352,10 @@ RUN "chown -R pironman5:pironman5 /opt/pironman5" "Set final ownership"
 # --- Write variant file ---
 TITLE "Write product variant"
 RUN "mkdir -p /opt/pironman5" "Ensure work directory exists"
-RUN "echo -n '${variant}' > /opt/pironman5/variant" "Write variant identifier"
+RUN "echo -n '${variant}' > /opt/pironman5/.variant" "Write variant identifier"
+if [ "$INSTALL_PIPOWER5" = true ]; then
+    RUN "echo -n 'pipower5' > /opt/pironman5/.custom_peripheral" "Write custom peripheral"
+fi
 
 # ============================================================
 # Execute Installation
