@@ -127,6 +127,9 @@ PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
 DT_OVERLAYS="${PM5_OVERLAYS[$variant]}"
 
 installer_log_title "\nPreparing installation for ${product_name} (branch: ${branch})"
+if [ "$INSTALL_PIPOWER5" = true ]; then
+    installer_log_title "PiPower5 UPS module: enabled"
+fi
 
 # Helper: check if a peripheral is present
 has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
