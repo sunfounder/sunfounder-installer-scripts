@@ -56,20 +56,45 @@ echo -e "\033[0m"
 # ============================================================
 echo "Please select your product model:"
 
-products=("Pironman 5" "Pironman 5 Mini" "Pironman 5 Max" "Pironman 5 Pro Max")
-variants=("base" "mini" "max" "pro-max")
-branches=("1.3.8" "1.3.8" "1.3.8" "1.3.8")
-part_numbers=("0306V10" "0308V10" "0306V11" "0316V10")
+# ============================================================
+# Product Configuration
+# ============================================================
+
+# --- Product list (shown in menu) ---
+# Format: "Display Name|variant|branch|part_number"
+PRODUCTS=(
+    "Pironman 5|base|1.3.x|0306V10"
+    "Pironman 5 Mini|mini|1.3.8|0308V10"
+    "Pironman 5 Max|max|1.3.8|0306V11"
+    "Pironman 5 Pro Max|pro-max|1.3.8|0316V10"
+)
+
+# --- Peripherals per variant ---
+declare -A PM5_PERIPHERALS
+PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
+PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
+PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
+PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed pi5_power_button"
+
+# --- DT overlays per variant ---
+declare -A PM5_OVERLAYS
+PM5_OVERLAYS[base]="sunfounder-pironman5.dtbo"
+PM5_OVERLAYS[mini]="sunfounder-pironman5mini.dtbo"
+PM5_OVERLAYS[max]="sunfounder-pironman5.dtbo"
+PM5_OVERLAYS[pro-max]="sunfounder-pironman5promax.dtbo"
+
+# ============================================================
 selected=0
-n=${#products[@]}
+n=${#PRODUCTS[@]}
 
 _draw_menu() {
     for i in $(seq 0 $((n - 1))); do
         printf "\033[K"
+        local name="${PRODUCTS[$i]%%|*}"
         if [ $i -eq $selected ]; then
-            printf "  \033[34m> %s\033[0m\n" "${products[$i]}"
+            printf "  \033[34m> %s\033[0m\n" "$name"
         else
-            printf "    %s\n" "${products[$i]}"
+            printf "    %s\n" "$name"
         fi
     done
 }
@@ -97,36 +122,11 @@ done
 
 printf "\033[?25h"
 
-product_name="${products[$selected]}"
-variant="${variants[$selected]}"
-branch="${branches[$selected]}"
-part_number="${part_numbers[$selected]}"
+IFS='|' read -r product_name variant branch part_number <<< "${PRODUCTS[$selected]}"
+PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
+DT_OVERLAYS="${PM5_OVERLAYS[$variant]}"
 
-installer_log_title "\nPreparing installation for ${product_name}"
-
-# ============================================================
-# Variant Peripheral Definitions
-# ============================================================
-
-# Define peripherals per product
-case "$variant" in
-    base)
-        PERIPHERALS="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
-        DT_OVERLAYS="sunfounder-pironman5.dtbo"
-        ;;
-    mini)
-        PERIPHERALS="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
-        DT_OVERLAYS="sunfounder-pironman5mini.dtbo"
-        ;;
-    max)
-        PERIPHERALS="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
-        DT_OVERLAYS="sunfounder-pironman5.dtbo"
-        ;;
-    pro-max)
-        PERIPHERALS="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed pi5_power_button"
-        DT_OVERLAYS="sunfounder-pironman5promax.dtbo"
-        ;;
-esac
+installer_log_title "\nPreparing installation for ${product_name} (branch: ${branch})"
 
 # Helper: check if a peripheral is present
 has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
@@ -251,8 +251,7 @@ RUN "chmod 0440 /etc/sudoers.d/pironman5" "Set sudoers permissions"
 if [ -n "$GROUP_LIST" ]; then
     TITLE "Add user to groups"
     for group in $GROUP_LIST; do
-        RUN "getent group ${group} > /dev/null 2>&1 || groupadd -r ${group}" "Ensure group ${group} exists"
-        RUN "usermod -aG ${group} pironman5" "Add pironman5 to ${group}"
+        RUN "getent group ${group} > /dev/null 2>&1 || groupadd -r ${group}; usermod -aG ${group} pironman5" "Setup ${group} group"
     done
 fi
 
