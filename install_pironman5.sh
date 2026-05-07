@@ -137,7 +137,7 @@ has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
 # ============================================================
 # Package Versions
 # ============================================================
-PM_AUTO_VERSION="1.4.7"
+PM_AUTO_VERSION="1.4.8"
 DASHBOARD_VERSION="1.4.0"
 SF_RPI_STATUS_VERSION="1.1.8"
 
