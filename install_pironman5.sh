@@ -33,11 +33,13 @@ installer_check_root_privileges
 # ============================================================
 INSTALL_PIPOWER5=false
 IS_CONTAINER=false
+IS_PLAIN_TEXT=false
 ARG_VARIANT=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --pipower5) INSTALL_PIPOWER5=true ;;
-        --container) IS_CONTAINER=true ;;
+        --container) IS_CONTAINER=true; IS_PLAIN_TEXT=true ;;
+        --plain-text) IS_PLAIN_TEXT=true ;;
         --variant=*) ARG_VARIANT="${1#*=}" ;;
         --variant) shift; ARG_VARIANT="$1" ;;
     esac
@@ -418,7 +420,11 @@ fi
 # ============================================================
 # Execute Installation
 # ============================================================
-installer_install
+if [ "$IS_PLAIN_TEXT" = true ]; then
+    installer_install --plain-text
+else
+    installer_install
+fi
 
 # ============================================================
 # Pro Max: Auto-launch browser
