@@ -29,12 +29,14 @@ installer_check_root_privileges
 INSTALL_PIPOWER5=false
 IS_CONTAINER=false
 ARG_VARIANT=""
-for arg in "$@"; do
-    case "$arg" in
+while [ $# -gt 0 ]; do
+    case "$1" in
         --pipower5) INSTALL_PIPOWER5=true ;;
         --container) IS_CONTAINER=true ;;
-        --variant=*) ARG_VARIANT="${arg#*=}" ;;
+        --variant=*) ARG_VARIANT="${1#*=}" ;;
+        --variant) shift; ARG_VARIANT="$1" ;;
     esac
+    shift
 done
 
 # Validate --variant
