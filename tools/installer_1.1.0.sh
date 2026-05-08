@@ -37,9 +37,14 @@ installer_check_url_accessibility() {
 installer_import() {
     local url="$1"
     local filename=$(basename $url)
-    curl -fsSL $url -o $filename
-    source $filename
-    rm $filename
+    local local_dir="/tmp/installer-tools"
+    if [ -d "$local_dir" ] && [ -f "$local_dir/$filename" ]; then
+        source "$local_dir/$filename"
+    else
+        curl -fsSL $url -o $filename
+        source $filename
+        rm $filename
+    fi
 }
 
 installer_run() {

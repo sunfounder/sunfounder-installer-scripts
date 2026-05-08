@@ -10,16 +10,21 @@
 # (Safe to pipe — all interactive prompts use /dev/tty)
 # ============================================================
 
-INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
-
-# Source Installer framework (add timestamp to bypass cache)
-curl -fsSL "$INSTALLER_URL?$(date +%s)" -o installer.sh
-if [ $? -ne 0 ]; then
-    echo "Network error, please check your internet connection."
-    exit 1
+# Source Installer framework — use local path when available (e.g. Docker build),
+# otherwise curl from GitHub.
+FRAMEWORK_DIR="/tmp/installer-tools"
+if [ -d "$FRAMEWORK_DIR" ]; then
+    source "$FRAMEWORK_DIR/installer_1.1.0.sh"
+else
+    INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
+    curl -fsSL "$INSTALLER_URL?$(date +%s)" -o installer.sh
+    if [ $? -ne 0 ]; then
+        echo "Network error, please check your internet connection."
+        exit 1
+    fi
+    source installer.sh
+    rm installer.sh
 fi
-source installer.sh
-rm installer.sh
 
 installer_check_root_privileges
 
