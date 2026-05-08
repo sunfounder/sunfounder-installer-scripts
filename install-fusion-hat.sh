@@ -23,6 +23,7 @@ APT_INSTALL_LIST=(
     "portaudio19-dev"
     "sox"
     "libttspico-utils"
+    "dkms"
 )
 
 TITLE "Install Fusion Hat Python Library\n"
