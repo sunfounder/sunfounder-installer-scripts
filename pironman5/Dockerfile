@@ -3,10 +3,9 @@ FROM ubuntu:24.04
 ARG VARIANT=base
 ARG PIPOWER5=false
 
-RUN apt-get update && apt-get install -y curl sudo
+RUN apt-get update && apt-get install -y curl sudo util-linux
 
-# Copy installer script and framework tools (no network fetch during build)
-COPY install_pironman5.sh /tmp/install.sh
+COPY pironman5/install.sh /tmp/install.sh
 COPY tools /tmp/installer-tools
 
 RUN if [ "$PIPOWER5" = "true" ]; then \
@@ -17,7 +16,7 @@ RUN if [ "$PIPOWER5" = "true" ]; then \
 
 RUN rm -rf /tmp/install.sh /tmp/installer-tools
 
-COPY docker/entrypoint.sh /
+COPY pironman5/entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 34001
