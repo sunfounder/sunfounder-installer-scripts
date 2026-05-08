@@ -224,8 +224,7 @@ installer_init() {
     # Find config.txt file
     INSTALLER_CONFIG_TXT_FILE=$(config_txt_find)
     if [ -z "$INSTALLER_CONFIG_TXT_FILE" ]; then
-        echo "Warning: config.txt file not found."
-        exit 1
+        echo "Info: config.txt file not found, skipping DT overlay configuration."
     fi
 
     # Register signal handler
