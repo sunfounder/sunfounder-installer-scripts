@@ -86,9 +86,9 @@ echo "Please select your product model:"
 # Format: "Display Name|variant|branch|part_number"
 PRODUCTS=(
     "Pironman 5|base|1.3.x|0306V10"
-    "Pironman 5 Mini|mini|1.3.8|0308V10"
-    "Pironman 5 Max|max|1.3.8|0306V11"
-    "Pironman 5 Pro Max|pro-max|1.3.8|0316V10"
+    "Pironman 5 Mini|mini|1.3.x|0308V10"
+    "Pironman 5 Max|max|1.3.x|0306V11"
+    "Pironman 5 Pro Max|pro-max|1.3.x|0316V10"
 )
 
 # --- Peripherals per variant ---
