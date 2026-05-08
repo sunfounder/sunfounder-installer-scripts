@@ -269,13 +269,12 @@ RUN "DEBIAN_FRONTEND=noninteractive apt-get update" "Update package list"
 RUN "DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv git curl" "Install build dependencies"
 
 TITLE "Clone pironman5 repository"
-CD ~
 RUN "rm -rf ${HOME}/pironman5" "Remove existing pironman5 directory"
-CLONE "pironman5" "$branch"
+RUN "git clone -b ${branch} --depth=1 ${GIT_REPO}pironman5 ${HOME}/pironman5" "Clone pironman5"
 if [ "$IS_CONTAINER" = false ]; then
     RUN "chown -R ${USERNAME}:${USERNAME} ${HOME}/pironman5" "Set repo ownership"
 fi
-CD ~/pironman5
+CD "${HOME}/pironman5"
 
 # --- Pre-install scripts ---
 if [ -n "$PRE_SCRIPTS" ]; then
