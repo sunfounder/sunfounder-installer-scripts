@@ -6,6 +6,7 @@
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh | sudo bash
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh | sudo bash -s -- --pipower5
+#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh | sudo bash -s -- --variant base --pipower5 --container
 # (Safe to pipe — all interactive prompts use /dev/tty)
 # ============================================================
 
@@ -26,11 +27,23 @@ installer_check_root_privileges
 # Parse CLI Arguments
 # ============================================================
 INSTALL_PIPOWER5=false
+IS_CONTAINER=false
+ARG_VARIANT=""
 for arg in "$@"; do
     case "$arg" in
         --pipower5) INSTALL_PIPOWER5=true ;;
+        --container) IS_CONTAINER=true ;;
+        --variant=*) ARG_VARIANT="${arg#*=}" ;;
     esac
 done
+
+# Validate --variant
+if [ -n "$ARG_VARIANT" ]; then
+    case "$ARG_VARIANT" in
+        base|mini|max|pro-max) ;;
+        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max"; exit 1 ;;
+    esac
+fi
 
 # ============================================================
 # Banner
@@ -84,45 +97,66 @@ PM5_OVERLAYS[max]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[pro-max]="sunfounder-pironman5promax.dtbo"
 
 # ============================================================
-selected=0
-n=${#PRODUCTS[@]}
-
-_draw_menu() {
-    for i in $(seq 0 $((n - 1))); do
-        printf "\033[K"
-        local name="${PRODUCTS[$i]%%|*}"
-        if [ $i -eq $selected ]; then
-            printf "  \033[34m> %s\033[0m\n" "$name"
-        else
-            printf "    %s\n" "$name"
+if [ -n "$ARG_VARIANT" ]; then
+    # --variant mode: skip interactive menu
+    for prod in "${PRODUCTS[@]}"; do
+        IFS='|' read -r p_name p_variant p_branch p_part <<< "$prod"
+        if [ "$p_variant" = "$ARG_VARIANT" ]; then
+            product_name="$p_name"
+            variant="$p_variant"
+            branch="$p_branch"
+            part_number="$p_part"
+            break
         fi
     done
-}
-
-printf "\033[?25l"
-_draw_menu
-
-while true; do
-    read -rsn1 key < /dev/tty
-    if [ "$key" = $'\033' ]; then
-        read -rsn1 -t 0.1 k1 < /dev/tty || true
-        read -rsn1 -t 0.1 k2 < /dev/tty || true
-        case "$k1$k2" in
-            '[A') selected=$(( (selected - 1 + n) % n )) ;;
-            '[B') selected=$(( (selected + 1) % n )) ;;
-        esac
-        printf "\033[%dA" $n
-        printf "\033[J"
-        _draw_menu
-    elif [ -z "$key" ]; then
-        printf "\n"
-        break
+    if [ -z "$variant" ]; then
+        echo "Variant not found: $ARG_VARIANT"
+        exit 1
     fi
-done
+else
+    # Interactive menu mode
+    echo "Please select your product model:"
+    selected=0
+    n=${#PRODUCTS[@]}
 
-printf "\033[?25h"
+    _draw_menu() {
+        for i in $(seq 0 $((n - 1))); do
+            printf "\033[K"
+            local name="${PRODUCTS[$i]%%|*}"
+            if [ $i -eq $selected ]; then
+                printf "  \033[34m> %s\033[0m\n" "$name"
+            else
+                printf "    %s\n" "$name"
+            fi
+        done
+    }
 
-IFS='|' read -r product_name variant branch part_number <<< "${PRODUCTS[$selected]}"
+    printf "\033[?25l"
+    _draw_menu
+
+    while true; do
+        read -rsn1 key < /dev/tty
+        if [ "$key" = $'\033' ]; then
+            read -rsn1 -t 0.1 k1 < /dev/tty || true
+            read -rsn1 -t 0.1 k2 < /dev/tty || true
+            case "$k1$k2" in
+                '[A') selected=$(( (selected - 1 + n) % n )) ;;
+                '[B') selected=$(( (selected + 1) % n )) ;;
+            esac
+            printf "\033[%dA" $n
+            printf "\033[J"
+            _draw_menu
+        elif [ -z "$key" ]; then
+            printf "\n"
+            break
+        fi
+    done
+
+    printf "\033[?25h"
+
+    IFS='|' read -r product_name variant branch part_number <<< "${PRODUCTS[$selected]}"
+fi
+
 PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
 DT_OVERLAYS="${PM5_OVERLAYS[$variant]}"
 
@@ -148,13 +182,17 @@ GIT_REPO="https://github.com/sunfounder/"
 # ============================================================
 
 # -- Pre-install scripts --
-PRE_SCRIPTS="umbrel_patch.sh"
-if has "ws2812" || has "gpio_fan_state" || has "vibration_switch"; then
-    PRE_SCRIPTS="$PRE_SCRIPTS install_lgpio.sh fix_kali_gpio_spi.sh"
-fi
-PRE_SCRIPTS="$PRE_SCRIPTS install_influxdb.sh"
-if [ "$INSTALL_PIPOWER5" = true ]; then
-    PRE_SCRIPTS="$PRE_SCRIPTS setup_pipower5.sh"
+if [ "$IS_CONTAINER" = true ]; then
+    PRE_SCRIPTS="install_influxdb.sh"
+else
+    PRE_SCRIPTS="umbrel_patch.sh"
+    if has "ws2812" || has "gpio_fan_state" || has "vibration_switch"; then
+        PRE_SCRIPTS="$PRE_SCRIPTS install_lgpio.sh fix_kali_gpio_spi.sh"
+    fi
+    PRE_SCRIPTS="$PRE_SCRIPTS install_influxdb.sh"
+    if [ "$INSTALL_PIPOWER5" = true ]; then
+        PRE_SCRIPTS="$PRE_SCRIPTS setup_pipower5.sh"
+    fi
 fi
 # Deduplicate
 PRE_SCRIPTS=$(echo "$PRE_SCRIPTS" | tr ' ' '\n' | awk 'NF' | sort -u | tr '\n' ' ')
@@ -227,7 +265,9 @@ TITLE "Clone pironman5 repository"
 CD ~
 RUN "rm -rf ${HOME}/pironman5" "Remove existing pironman5 directory"
 CLONE "pironman5" "$branch"
-RUN "chown -R ${USERNAME}:${USERNAME} ${HOME}/pironman5" "Set repo ownership"
+if [ "$IS_CONTAINER" = false ]; then
+    RUN "chown -R ${USERNAME}:${USERNAME} ${HOME}/pironman5" "Set repo ownership"
+fi
 CD ~/pironman5
 
 # --- Pre-install scripts ---
@@ -243,33 +283,36 @@ TITLE "Install APT dependencies"
 RUN "DEBIAN_FRONTEND=noninteractive apt-get install -y ${APT_DEPS}" "Install APT dependencies"
 
 # --- User and group setup ---
-TITLE "Setup system user"
-RUN "getent group pironman5 > /dev/null || groupadd -r pironman5" "Create pironman5 group"
-RUN "getent passwd pironman5 > /dev/null || useradd -r -g pironman5 -s /sbin/nologin -d /opt/pironman5 -m pironman5" "Create pironman5 user"
-RUN "usermod -aG pironman5 ${USERNAME}" "Add ${USERNAME} to pironman5 group"
+if [ "$IS_CONTAINER" = false ]; then
+    TITLE "Setup system user"
+    RUN "getent group pironman5 > /dev/null || groupadd -r pironman5" "Create pironman5 group"
+    RUN "getent passwd pironman5 > /dev/null || useradd -r -g pironman5 -s /sbin/nologin -d /opt/pironman5 -m pironman5" "Create pironman5 user"
+    RUN "usermod -aG pironman5 ${USERNAME}" "Add ${USERNAME} to pironman5 group"
 
-TITLE "Setup sudo permissions"
-RUN "echo 'pironman5 ALL=(ALL) NOPASSWD: /usr/sbin/shutdown, /usr/sbin/reboot, /usr/sbin/poweroff, /usr/sbin/halt, /usr/bin/systemctl, /usr/bin/lsblk' | tee /etc/sudoers.d/pironman5 > /dev/null" "Create sudoers file"
-RUN "chmod 0440 /etc/sudoers.d/pironman5" "Set sudoers permissions"
+    TITLE "Setup sudo permissions"
+    RUN "echo 'pironman5 ALL=(ALL) NOPASSWD: /usr/sbin/shutdown, /usr/sbin/reboot, /usr/sbin/poweroff, /usr/sbin/halt, /usr/bin/systemctl, /usr/bin/lsblk' | tee /etc/sudoers.d/pironman5 > /dev/null" "Create sudoers file"
+    RUN "chmod 0440 /etc/sudoers.d/pironman5" "Set sudoers permissions"
 
-if [ -n "$GROUP_LIST" ]; then
-    TITLE "Add user to groups"
-    for group in $GROUP_LIST; do
-        RUN "getent group ${group} > /dev/null 2>&1 || groupadd -r ${group}; usermod -aG ${group} pironman5" "Setup ${group} group"
-    done
+    if [ -n "$GROUP_LIST" ]; then
+        TITLE "Add user to groups"
+        for group in $GROUP_LIST; do
+            RUN "getent group ${group} > /dev/null 2>&1 || groupadd -r ${group}; usermod -aG ${group} pironman5" "Setup ${group} group"
+        done
+    fi
 fi
 
 # --- Working directory and venv ---
 TITLE "Create working directory"
-RUN "mkdir -p /opt/pironman5" "Create /opt/pironman5"
-RUN "chmod 775 /opt/pironman5" "Set work directory permissions"
-RUN "chown -R pironman5:pironman5 /opt/pironman5" "Set work directory owner"
-RUN "mkdir -p /var/log/pironman5" "Create log directory"
-RUN "chmod 775 /var/log/pironman5" "Set log directory permissions"
-RUN "chown -R pironman5:pironman5 /var/log/pironman5" "Set log directory owner"
+RUN "mkdir -p /opt/pironman5 /var/log/pironman5" "Create directories"
 RUN "touch /var/log/pironman5/pironman5.log" "Create log file"
-RUN "chmod 664 /var/log/pironman5/pironman5.log" "Set log file permissions"
-RUN "chown pironman5:pironman5 /var/log/pironman5/pironman5.log" "Set log file owner"
+if [ "$IS_CONTAINER" = false ]; then
+    RUN "chmod 775 /opt/pironman5" "Set work directory permissions"
+    RUN "chown -R pironman5:pironman5 /opt/pironman5" "Set work directory owner"
+    RUN "chmod 775 /var/log/pironman5" "Set log directory permissions"
+    RUN "chown -R pironman5:pironman5 /var/log/pironman5" "Set log directory owner"
+    RUN "chmod 664 /var/log/pironman5/pironman5.log" "Set log file permissions"
+    RUN "chown pironman5:pironman5 /var/log/pironman5/pironman5.log" "Set log file owner"
+fi
 RUN "rm -rf /opt/pironman5/venv" "Remove old virtual environment"
 RUN "python3 -m venv /opt/pironman5/venv --system-site-packages" "Create virtual environment"
 
@@ -305,13 +348,15 @@ TITLE "Create symlinks"
 RUN "ln -sf /opt/pironman5/venv/bin/pironman5 /usr/local/bin/pironman5" "Create pironman5 symlink"
 
 # --- Systemd auto-start ---
-TITLE "Setup auto-start"
-RUN "cp bin/pironman5.service /etc/systemd/system/" "Install service file"
-RUN "systemctl enable pironman5.service" "Enable pironman5 service"
-RUN "systemctl daemon-reload" "Reload systemd"
+if [ "$IS_CONTAINER" = false ]; then
+    TITLE "Setup auto-start"
+    RUN "cp bin/pironman5.service /etc/systemd/system/" "Install service file"
+    RUN "systemctl enable pironman5.service" "Enable pironman5 service"
+    RUN "systemctl daemon-reload" "Reload systemd"
+fi
 
 # --- Kernel modules ---
-if [ -n "$MODULES" ]; then
+if [ "$IS_CONTAINER" = false ] && [ -n "$MODULES" ]; then
     TITLE "Configure kernel modules"
     for module in $MODULES; do
         RUN "echo ${module} >> /etc/modules-load.d/modules.conf" "Add module ${module}"
@@ -319,38 +364,42 @@ if [ -n "$MODULES" ]; then
 fi
 
 # --- Device tree overlays ---
-TITLE "Copy device tree overlays"
-# Find overlay path (try new paths first for newer Pi OS)
-OVERLAY_SEARCH_PATHS="/boot/firmware/overlays /boot/overlays /boot/firmware/current/overlays"
-OVERLAY_PATH=""
-for p in $OVERLAY_SEARCH_PATHS; do
-    if [ -d "$p" ]; then
-        OVERLAY_PATH="$p"
-        break
-    fi
-done
-
-if [ -z "$OVERLAY_PATH" ]; then
-    installer_log_failed "Device tree overlay directory not found. Checked: ${OVERLAY_SEARCH_PATHS}"
-else
-    for overlay in $DT_OVERLAYS; do
-        RUN "cp overlays/${overlay} ${OVERLAY_PATH}/" "Copy ${overlay}"
+if [ "$IS_CONTAINER" = false ]; then
+    TITLE "Copy device tree overlays"
+    OVERLAY_SEARCH_PATHS="/boot/firmware/overlays /boot/overlays /boot/firmware/current/overlays"
+    OVERLAY_PATH=""
+    for p in $OVERLAY_SEARCH_PATHS; do
+        if [ -d "$p" ]; then
+            OVERLAY_PATH="$p"
+            break
+        fi
     done
-    if [ "$INSTALL_PIPOWER5" = true ]; then
-        RUN "curl -fsSL https://github.com/sunfounder/pipower5/raw/refs/heads/main/sunfounder-pipower5.dtbo -o ${OVERLAY_PATH}/sunfounder-pipower5.dtbo" "Copy PiPower5 device tree overlay"
+    if [ -z "$OVERLAY_PATH" ]; then
+        installer_log_failed "Device tree overlay directory not found. Checked: ${OVERLAY_SEARCH_PATHS}"
+    else
+        for overlay in $DT_OVERLAYS; do
+            RUN "cp overlays/${overlay} ${OVERLAY_PATH}/" "Copy ${overlay}"
+        done
+        if [ "$INSTALL_PIPOWER5" = true ]; then
+            RUN "curl -fsSL https://github.com/sunfounder/pipower5/raw/refs/heads/main/sunfounder-pipower5.dtbo -o ${OVERLAY_PATH}/sunfounder-pipower5.dtbo" "Copy PiPower5 device tree overlay"
+        fi
     fi
 fi
 
 # --- Post-install scripts ---
-if has "gpio_fan_state" || has "vibration_switch"; then
-    TITLE "Run post-install scripts"
-    RUN "bash scripts/change_rpi.gpio_to_rpi.lgpio.sh" "Migrate RPi.GPIO to rpi.lgpio"
+if [ "$IS_CONTAINER" = false ]; then
+    if has "gpio_fan_state" || has "vibration_switch"; then
+        TITLE "Run post-install scripts"
+        RUN "bash scripts/change_rpi.gpio_to_rpi.lgpio.sh" "Migrate RPi.GPIO to rpi.lgpio"
+    fi
 fi
 
 # --- Fix permissions ---
-TITLE "Finalize permissions"
-RUN "chmod +x /opt/pironman5" "Set execution permission on work dir"
-RUN "chown -R pironman5:pironman5 /opt/pironman5" "Set final ownership"
+if [ "$IS_CONTAINER" = false ]; then
+    TITLE "Finalize permissions"
+    RUN "chmod +x /opt/pironman5" "Set execution permission on work dir"
+    RUN "chown -R pironman5:pironman5 /opt/pironman5" "Set final ownership"
+fi
 
 # --- Write variant file ---
 TITLE "Write product variant"
@@ -368,7 +417,7 @@ installer_install
 # ============================================================
 # Pro Max: Auto-launch browser
 # ============================================================
-if [ "$variant" = "pro-max" ]; then
+if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro-max" ]; then
     echo ""
     echo "Do you want the browser to open automatically on desktop startup?"
     echo "This will install an autostart entry that launches the Pironman 5 dashboard in a browser."
@@ -381,4 +430,6 @@ fi
 # ============================================================
 # Complete
 # ============================================================
-installer_prompt_reboot
+if [ "$IS_CONTAINER" = false ]; then
+    installer_prompt_reboot
+fi
