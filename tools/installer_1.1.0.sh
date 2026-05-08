@@ -236,20 +236,21 @@ installer_init() {
     trap installer_handle_interrupt SIGINT
     
     installer_init_log_file
-    
-    # Create progress bar
-    progress_bar_setup_scroll_area
 
-    for arg in "$@"; do
-        case $arg in
-        --plain-text)
-            INSTALLER_PLAIN_TEXT=true
-            ;;
-        esac
-    done
+    # Create progress bar (skip in plain-text mode)
+    if [ "$INSTALLER_PLAIN_TEXT" != true ]; then
+        progress_bar_setup_scroll_area
+    fi
 }
 
 installer_install() {
+    # Parse arguments before installer_init so --plain-text can suppress progress bar
+    for arg in "$@"; do
+        case $arg in
+        --plain-text) INSTALLER_PLAIN_TEXT=true ;;
+        esac
+    done
+
     installer_init
 
     local command_count=0
@@ -271,9 +272,13 @@ installer_install() {
         elif [ "${command[0]}" == "CLONE" ]; then
             installer_git_clone "${command[1]}" "${command[2]}"
         fi
-        progress_bar_draw $(((command_count+1)*100/INSTALLER_COMMANDS_COUNT))
+        if [ "$INSTALLER_PLAIN_TEXT" != true ]; then
+            progress_bar_draw $(((command_count+1)*100/INSTALLER_COMMANDS_COUNT))
+        fi
     done
-    progress_bar_destroy_scroll_area
+    if [ "$INSTALLER_PLAIN_TEXT" != true ]; then
+        progress_bar_destroy_scroll_area
+    fi
     
     if [ "$INSTALLER_ERROR_HAPPENED" = false ]; then
         echo -e "Install finished."
