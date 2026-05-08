@@ -4,9 +4,9 @@
 # Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh | sudo bash
-#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh | sudo bash -s -- --pipower5
-#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install_pironman5.sh | sudo bash -s -- --variant base --pipower5 --container
+#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
+#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --pipower5
+#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --variant base --pipower5 --container
 # (Safe to pipe — all interactive prompts use /dev/tty)
 # ============================================================
 
