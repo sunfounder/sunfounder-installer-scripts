@@ -37,6 +37,10 @@ curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scr
 curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh" -o install.sh
 sudo bash install.sh --pipower5
 rm install.sh
+# Install Pironman 5 UPS
+curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh" -o install.sh
+sudo bash install.sh --variant ups
+rm install.sh
 
 # Setup Fusion Hat Audio - this need to run again after reboot
 wget https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh

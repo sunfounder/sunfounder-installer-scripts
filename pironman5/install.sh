@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Pironman 5 Installer
-# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max
+# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max, Pironman 5 UPS
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
@@ -49,8 +49,8 @@ done
 # Validate --variant
 if [ -n "$ARG_VARIANT" ]; then
     case "$ARG_VARIANT" in
-        base|mini|max|pro-max) ;;
-        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max"; exit 1 ;;
+        base|mini|max|pro-max|ups) ;;
+        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max, ups"; exit 1 ;;
     esac
 fi
 
@@ -68,7 +68,7 @@ cat <<'BANNER'
 ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚══════╝
 
                Pironman 5 Installer
-        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max
+        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max | 5 UPS
 
 BANNER
 echo -e "\033[0m"
@@ -84,6 +84,7 @@ PRODUCTS=(
     "Pironman 5 Mini|mini|1.3.x|0308V10"
     "Pironman 5 Max|max|1.3.x|0306V11"
     "Pironman 5 Pro Max|pro-max|1.3.x|0316V10"
+    "Pironman 5 UPS|ups|1.3.x|2602V10"
 )
 
 # --- Peripherals per variant ---
@@ -92,6 +93,7 @@ PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gp
 PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
 PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
 PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed pi5_power_button"
+PM5_PERIPHERALS[ups]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep sf_rgb_led pwm_fan_speed"
 
 # --- DT overlays per variant ---
 declare -A PM5_OVERLAYS
@@ -99,6 +101,7 @@ PM5_OVERLAYS[base]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[mini]="sunfounder-pironman5mini.dtbo"
 PM5_OVERLAYS[max]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[pro-max]="sunfounder-pironman5promax.dtbo"
+PM5_OVERLAYS[ups]=""
 
 # ============================================================
 if [ -n "$ARG_VARIANT" ]; then
@@ -163,6 +166,11 @@ fi
 
 PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
 DT_OVERLAYS="${PM5_OVERLAYS[$variant]}"
+
+# UPS variant has pipower5 as a built-in module
+if [ "$variant" = "ups" ]; then
+    INSTALL_PIPOWER5=true
+fi
 
 installer_log_title "\nPreparing installation for ${product_name} (branch: ${branch})"
 if [ "$INSTALL_PIPOWER5" = true ]; then
