@@ -7,7 +7,7 @@
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --pipower5
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --variant base --pipower5 --container
-# (Safe to pipe — all interactive prompts use /dev/tty)
+# (Safe to pipe — all interactive prompts read from stderr to keep the terminal)
 # ============================================================
 
 # Source Installer framework — use local path when available (e.g. Docker build),
@@ -120,6 +120,7 @@ if [ -n "$ARG_VARIANT" ]; then
 else
     # Interactive menu mode
     echo "Please select your product model:"
+    echo -e "  \033[2m↑↓ to move, Enter to confirm\033[0m"
     selected=0
     n=${#PRODUCTS[@]}
 
@@ -139,10 +140,10 @@ else
     _draw_menu
 
     while true; do
-        read -rsn1 key < /dev/tty
+        read -rsn1 key <&2
         if [ "$key" = $'\033' ]; then
-            read -rsn1 -t 0.1 k1 < /dev/tty || true
-            read -rsn1 -t 0.1 k2 < /dev/tty || true
+            read -rsn1 -t 0.1 k1 <&2 || true
+            read -rsn1 -t 0.1 k2 <&2 || true
             case "$k1$k2" in
                 '[A') selected=$(( (selected - 1 + n) % n )) ;;
                 '[B') selected=$(( (selected + 1) % n )) ;;
@@ -428,7 +429,7 @@ if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro-max" ]; then
     echo ""
     echo "Do you want the browser to open automatically on desktop startup?"
     echo "This will install an autostart entry that launches the Pironman 5 dashboard in a browser."
-    read -p "Install auto-launch browser? [Y/n]: " install_browser < /dev/tty
+    read -p "Install auto-launch browser? [Y/n]: " install_browser <&2
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
         /opt/pironman5/venv/bin/python3 ~/pironman5/pironman5/_launch_browser.py
     fi
