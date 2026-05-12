@@ -1,14 +1,16 @@
 #!/bin/bash
 # ============================================================
-# Pironman 5 Installer
+# Pironman 5 Installer v1.0.1
 # Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max, Pironman 5 UPS
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --pipower5
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --variant base --pipower5 --container
-# (Safe to pipe — all interactive prompts read from stderr to keep the terminal)
+# (Safe to pipe — interactive input resolved via parent TTY to bypass sudo use_pty)
 # ============================================================
+
+VERSION="1.0.1"
 
 # Source Installer framework — use local path when available (e.g. Docker build),
 # otherwise curl from GitHub.
@@ -54,6 +56,15 @@ if [ -n "$ARG_VARIANT" ]; then
     esac
 fi
 
+# Resolve real input terminal.
+# sudo use_pty (Ubuntu default) creates an isolated PTY for the command;
+# we read from the parent process's terminal to reach actual keyboard input.
+INPUT_TTY="/dev/$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' ')"
+if [ -z "$INPUT_TTY" ] || [ "$INPUT_TTY" = "/dev/?" ] || [ ! -r "$INPUT_TTY" ]; then
+    INPUT_TTY="/dev/tty"
+fi
+[ -r "$INPUT_TTY" ] || INPUT_TTY="/proc/self/fd/2"
+
 # ============================================================
 # Banner
 # ============================================================
@@ -72,6 +83,8 @@ cat <<'BANNER'
 
 BANNER
 echo -e "\033[0m"
+echo -e "  \033[2mPironman 5 Installer v${VERSION}\033[0m"
+echo ""
 
 # ============================================================
 # Product Configuration
@@ -143,10 +156,10 @@ else
     _draw_menu
 
     while true; do
-        read -rsn1 key <&2
+        read -rsn1 key < "$INPUT_TTY"
         if [ "$key" = $'\033' ]; then
-            read -rsn1 -t 0.1 k1 <&2 || true
-            read -rsn1 -t 0.1 k2 <&2 || true
+            read -rsn1 -t 0.1 k1 < "$INPUT_TTY" || true
+            read -rsn1 -t 0.1 k2 < "$INPUT_TTY" || true
             case "$k1$k2" in
                 '[A') selected=$(( (selected - 1 + n) % n )) ;;
                 '[B') selected=$(( (selected + 1) % n )) ;;
@@ -437,7 +450,7 @@ if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro-max" ]; then
     echo ""
     echo "Do you want the browser to open automatically on desktop startup?"
     echo "This will install an autostart entry that launches the Pironman 5 dashboard in a browser."
-    read -p "Install auto-launch browser? [Y/n]: " install_browser <&2
+    read -p "Install auto-launch browser? [Y/n]: " install_browser < "$INPUT_TTY"
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
         /opt/pironman5/venv/bin/python3 ~/pironman5/pironman5/_launch_browser.py
     fi
