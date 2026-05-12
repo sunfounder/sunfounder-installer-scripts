@@ -135,7 +135,11 @@ else
         printf "Enter number [1-%d]: " $n
         read -r choice < /dev/tty || {
             echo ""
-            echo "Cannot read input. Try: sudo bash install.sh --variant <model>"
+            echo "Input/output error (pipe + sudo on Ubuntu/Debian)."
+            echo "Download the script first:"
+            echo "  curl -o install.sh URL && sudo bash install.sh"
+            echo "Or skip the menu:"
+            echo "  sudo bash install.sh --variant <model>"
             exit 1
         }
         if [ "$choice" -ge 1 ] 2>/dev/null && [ "$choice" -le "$n" ] 2>/dev/null; then
