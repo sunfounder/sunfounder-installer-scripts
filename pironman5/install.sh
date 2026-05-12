@@ -7,7 +7,7 @@
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --pipower5
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --variant base --pipower5 --container
-# (Safe to pipe — interactive input resolved via parent TTY to bypass sudo use_pty)
+# (Safe to run directly — interactive prompts read from /dev/tty)
 # ============================================================
 
 VERSION="1.0.1"
@@ -55,15 +55,6 @@ if [ -n "$ARG_VARIANT" ]; then
         *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max"; exit 1 ;;
     esac
 fi
-
-# Resolve real input terminal.
-# sudo use_pty (Ubuntu default) creates an isolated PTY for the command;
-# we read from the parent process's terminal to reach actual keyboard input.
-INPUT_TTY="/dev/$(ps -o tty= -p $PPID 2>/dev/null | tr -d ' ')"
-if [ -z "$INPUT_TTY" ] || [ "$INPUT_TTY" = "/dev/?" ] || [ ! -r "$INPUT_TTY" ]; then
-    INPUT_TTY="/dev/tty"
-fi
-[ -r "$INPUT_TTY" ] || INPUT_TTY="/proc/self/fd/2"
 
 # ============================================================
 # Banner
@@ -139,7 +130,7 @@ else
     echo ""
     while true; do
         printf "Enter number [1-%d]: " $n
-        read -r choice < "$INPUT_TTY" || {
+        read -r choice < /dev/tty || {
             echo ""
             echo "Cannot read input. Try: sudo bash install.sh --variant <model>"
             exit 1
@@ -422,7 +413,7 @@ if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro-max" ]; then
     echo ""
     echo "Do you want the browser to open automatically on desktop startup?"
     echo "This will install an autostart entry that launches the Pironman 5 dashboard in a browser."
-    read -p "Install auto-launch browser? [Y/n]: " install_browser < "$INPUT_TTY"
+    read -p "Install auto-launch browser? [Y/n]: " install_browser < /dev/tty
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
         /opt/pironman5/venv/bin/python3 ~/pironman5/pironman5/_launch_browser.py
     fi
