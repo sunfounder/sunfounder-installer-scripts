@@ -66,6 +66,18 @@ RUN "chown -R $USERNAME:$USERNAME $HOME/picar-x" "Change ownership of picar-x to
 CD $HOME/picar-x
 RUN "pip3 install ./ --break-system-packages --force-reinstall --ignore-installed" "Install picar-x"
 
+# Install sunfounder-voice-assistant
+TITLE "Install sunfounder-voice-assistant"
+CD $HOME
+RUN "rm -rf $HOME/sunfounder-voice-assistant" "Remove sunfounder-voice-assistant if exists"
+CLONE "sunfounder-voice-assistant" "main"
+if [ $? -ne 0 ]; then
+    installer_log_failed "Failed to clone sunfounder-voice-assistant."
+    exit 1
+fi
+CD $HOME/sunfounder-voice-assistant
+RUN "pip3 install ./ --break-system-packages --force-reinstall --ignore-installed" "Install sunfounder-voice-assistant"
+
 # Create dir for config
 RUN "mkdir -p /opt/picar-x" "Create dir for config"
 RUN "chown -R $USERNAME:$USERNAME /opt/picar-x" "Change ownership of /opt/picar-x to $USERNAME:$USERNAME"

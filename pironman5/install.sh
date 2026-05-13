@@ -1,14 +1,16 @@
 #!/bin/bash
 # ============================================================
-# Pironman 5 Installer
+# Pironman 5 Installer v1.0.1
 # Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --pipower5
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash -s -- --variant base --pipower5 --container
-# (Safe to pipe — all interactive prompts use /dev/tty)
+# (Safe to run directly — interactive prompts read from /dev/tty)
 # ============================================================
+
+VERSION="1.0.1"
 
 # Source Installer framework — use local path when available (e.g. Docker build),
 # otherwise curl from GitHub.
@@ -58,7 +60,7 @@ fi
 # Banner
 # ============================================================
 echo -e "\033[34m"
-cat <<'BANNER'
+cat <<BANNER
 
 ██████╗ ██╗██████╗  ██████╗ ███╗   ██╗███╗   ███╗ █████╗ ███╗   ██╗    ███████╗
 ██╔══██╗██║██╔══██╗██╔═══██╗████╗  ██║████╗ ████║██╔══██╗████╗  ██║    ██╔════╝
@@ -67,7 +69,7 @@ cat <<'BANNER'
 ██║     ██║██║  ██║╚██████╔╝██║ ╚████║██║ ╚═╝ ██║██║  ██║██║ ╚████║    ███████║
 ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚══════╝
 
-               Pironman 5 Installer
+        Pironman 5 Installer v${VERSION}
         Supports: 5 | 5 Mini | 5 Max | 5 Pro Max
 
 BANNER
@@ -119,44 +121,31 @@ if [ -n "$ARG_VARIANT" ]; then
     fi
 else
     # Interactive menu mode
-    echo "Please select your product model:"
-    selected=0
     n=${#PRODUCTS[@]}
-
-    _draw_menu() {
-        for i in $(seq 0 $((n - 1))); do
-            printf "\033[K"
-            local name="${PRODUCTS[$i]%%|*}"
-            if [ $i -eq $selected ]; then
-                printf "  \033[34m> %s\033[0m\n" "$name"
-            else
-                printf "    %s\n" "$name"
-            fi
-        done
-    }
-
-    printf "\033[?25l"
-    _draw_menu
-
+    echo "Please select your product model:"
+    for i in $(seq 0 $((n - 1))); do
+        name="${PRODUCTS[$i]%%|*}"
+        echo "  $((i + 1))) $name"
+    done
+    echo ""
     while true; do
-        read -rsn1 key < /dev/tty
-        if [ "$key" = $'\033' ]; then
-            read -rsn1 -t 0.1 k1 < /dev/tty || true
-            read -rsn1 -t 0.1 k2 < /dev/tty || true
-            case "$k1$k2" in
-                '[A') selected=$(( (selected - 1 + n) % n )) ;;
-                '[B') selected=$(( (selected + 1) % n )) ;;
-            esac
-            printf "\033[%dA" $n
-            printf "\033[J"
-            _draw_menu
-        elif [ -z "$key" ]; then
-            printf "\n"
+        printf "Enter number [1-%d]: " $n
+        read -r choice < /dev/tty || {
+            echo ""
+            echo "Input/output error (pipe + sudo on Ubuntu/Debian)."
+            echo "Download the script first:"
+            echo "  curl -o install.sh URL && sudo bash install.sh"
+            echo "Or skip the menu:"
+            echo "  sudo bash install.sh --variant <model>"
+            exit 1
+        }
+        if [ "$choice" -ge 1 ] 2>/dev/null && [ "$choice" -le "$n" ] 2>/dev/null; then
+            echo ""
+            selected=$((choice - 1))
             break
         fi
+        echo "Invalid choice, please try again."
     done
-
-    printf "\033[?25h"
 
     IFS='|' read -r product_name variant branch part_number <<< "${PRODUCTS[$selected]}"
 fi
