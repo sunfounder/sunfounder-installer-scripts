@@ -49,12 +49,8 @@ RUN "pip3 install . --break-system-packages" "Install fusion-hat library"
 RUN "pip3 uninstall -y RPi.GPIO --break-system-packages" "Uninstall RPi.GPIO"
 
 TITLE "Setup audio"
-RUN "rm -f /opt/setup_fusion_hat_audio.sh" "Remove existing audio script"
-RUN "wget -O /opt/setup_fusion_hat_audio.sh https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/setup_fusion_hat_audio.sh" "Download audio script"
-RUN "chown $USERNAME:$USERNAME /opt/setup_fusion_hat_audio.sh" "Change ownership of audio script to $USERNAME"
-RUN "chmod 755 /opt/setup_fusion_hat_audio.sh" "Change permissions of audio script to 755"
-RUN "/opt/setup_fusion_hat_audio.sh --skip-test" "Setup audio"
+RUN "fusion_hat setup_speaker" "Setup audio"
 
 installer_install
 
-installer_prompt_reboot "Remember to run sudo /opt/setup_fusion_hat_audio.sh to enable speaker after reboot."
+installer_prompt_reboot "Remember to run fusion_hat setup_speaker to enable speaker after reboot."
