@@ -95,7 +95,7 @@ PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gp
 PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
 PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
 PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed pi5_power_button"
-PM5_PERIPHERALS[ups]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep sf_rgb_led pwm_fan_speed"
+PM5_PERIPHERALS[ups]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit delete_log_file debug_level restart_service reboot shutdown ip_address mac_address clear_history oled oled_sleep oled_page_mix oled_page_performance oled_page_ips oled_page_disk oled_page_battery oled_page_input oled_page_rpi_power sf_rgb_led pwm_fan_speed"
 
 # --- DT overlays per variant ---
 declare -A PM5_OVERLAYS
@@ -225,6 +225,9 @@ fi
 if has "pi5_power_button"; then
     PIP_DEPS="$PIP_DEPS evdev"
 fi
+if has "sf_rgb_led"; then
+    PIP_DEPS="$PIP_DEPS numpy"
+fi
 PIP_DEPS=$(echo "$PIP_DEPS" | tr ' ' '\n' | awk 'NF' | sort -u | tr '\n' ' ')
 
 # -- Groups --
@@ -232,7 +235,7 @@ GROUP_LIST="video influxdb"
 if has "ws2812"; then
     GROUP_LIST="$GROUP_LIST spi gpio"
 fi
-if has "oled"; then
+if has "oled" || has "sf_rgb_led"; then
     GROUP_LIST="$GROUP_LIST i2c"
 fi
 if has "gpio_fan_state" || has "vibration_switch"; then
