@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Pironman 5 Installer v1.0.1
-# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max
+# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max, Pironman 5 NAS
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
@@ -51,8 +51,8 @@ done
 # Validate --variant
 if [ -n "$ARG_VARIANT" ]; then
     case "$ARG_VARIANT" in
-        base|mini|max|pro-max) ;;
-        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max"; exit 1 ;;
+        base|mini|max|pro-max|nas) ;;
+        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max, nas"; exit 1 ;;
     esac
 fi
 
@@ -70,7 +70,7 @@ cat <<BANNER
 ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚══════╝
 
         Pironman 5 Installer v${VERSION}
-        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max
+        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max | 5 NAS
 
 BANNER
 echo -e "\033[0m"
@@ -86,6 +86,7 @@ PRODUCTS=(
     "Pironman 5 Mini|mini|1.3.x|0308V10"
     "Pironman 5 Max|max|1.3.x|0306V11"
     "Pironman 5 Pro Max|pro-max|1.3.x|0316V10"
+    "Pironman 5 NAS|nas|nas|0312V10"
 )
 
 # --- Peripherals per variant ---
@@ -94,6 +95,7 @@ PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gp
 PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
 PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
 PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed pi5_power_button"
+PM5_PERIPHERALS[nas]="storage cpu network memory log cpu_temperature gpu_temperature temperature_unit delete_log_file debug_level ip_address mac_address restart_service reboot shutdown oled oled_page_mix oled_page_performance oled_page_ips oled_page_disk pwm_fan_speed oled_sleep pironman_mcu rtl8125"
 
 # --- DT overlays per variant ---
 declare -A PM5_OVERLAYS
@@ -101,6 +103,7 @@ PM5_OVERLAYS[base]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[mini]="sunfounder-pironman5mini.dtbo"
 PM5_OVERLAYS[max]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[pro-max]="sunfounder-pironman5promax.dtbo"
+PM5_OVERLAYS[nas]="sunfounder-pironman5nas.dtbo"
 
 # ============================================================
 if [ -n "$ARG_VARIANT" ]; then
@@ -182,6 +185,9 @@ else
     if has "ws2812" || has "gpio_fan_state" || has "vibration_switch"; then
         PRE_SCRIPTS="$PRE_SCRIPTS install_lgpio.sh fix_kali_gpio_spi.sh"
     fi
+    if has "rtl8125"; then
+        PRE_SCRIPTS="$PRE_SCRIPTS setup_rtl8125.sh"
+    fi
     PRE_SCRIPTS="$PRE_SCRIPTS install_influxdb.sh"
     if [ "$INSTALL_PIPOWER5" = true ]; then
         PRE_SCRIPTS="$PRE_SCRIPTS setup_pipower5.sh"
@@ -195,7 +201,7 @@ APT_DEPS="python3-dev influxdb"
 if has "oled"; then
     APT_DEPS="$APT_DEPS libjpeg-dev libfreetype6-dev libopenjp2-7 kmod i2c-tools"
 fi
-if has "pi5_power_button"; then
+if has "pi5_power_button" || has "rtl8125"; then
     APT_DEPS="$APT_DEPS build-essential gcc g++"
 fi
 if has "gpio_fan_state" || has "vibration_switch"; then
