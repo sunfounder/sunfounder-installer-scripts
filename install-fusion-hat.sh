@@ -49,7 +49,7 @@ RUN "pip3 install . --break-system-packages" "Install fusion-hat library"
 RUN "pip3 uninstall -y RPi.GPIO --break-system-packages" "Uninstall RPi.GPIO"
 
 TITLE "Setup audio"
-RUN "fusion_hat setup_speaker" "Setup audio"
+RUN "fusion_hat setup_speaker --skip-test" "Setup audio"
 
 installer_install
 
