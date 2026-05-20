@@ -82,11 +82,11 @@ echo -e "\033[0m"
 # --- Product list (shown in menu) ---
 # Format: "Display Name|variant|branch|part_number"
 PRODUCTS=(
-    "Pironman 5|base|1.3.11|0306V10"
-    "Pironman 5 Mini|mini|1.3.11|0308V10"
-    "Pironman 5 Max|max|1.3.11|0306V11"
-    "Pironman 5 Pro Max|pro-max|1.3.11|0316V10"
-    "Pironman 5 NAS|nas|1.3.11|0312V10"
+    "Pironman 5|base|1.3.x|0306V10"
+    "Pironman 5 Mini|mini|1.3.x|0308V10"
+    "Pironman 5 Max|max|1.3.x|0306V11"
+    "Pironman 5 Pro Max|pro-max|1.3.x|0316V10"
+    "Pironman 5 NAS|nas|1.3.x|0312V10"
 )
 
 # --- Peripherals per variant ---
