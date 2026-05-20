@@ -38,6 +38,7 @@ rm install.sh
 | Pironman 5 Max | `max` | OLED, RGB LED, PWM+GPIO Fan |
 | Pironman 5 Pro Max | `pro-max` | OLED, M.2 NVMe slot |
 | Pironman 5 UPS | `ups` | OLED, UPS battery |
+| Pironman 5 NAS | `nas` | OLED, 2.5G Ethernet, MCU button |
 
 ## CLI Flags
 

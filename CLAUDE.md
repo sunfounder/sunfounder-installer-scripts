@@ -43,15 +43,26 @@ This repo hosts installer shell scripts for SunFounder Raspberry Pi HAT products
 
 ## Pironman 5 installer (`pironman5/install.sh`)
 
-The most complex installer in the repo. Supports 5 product variants via a bash selection menu or `--variant` CLI flag.
+The most complex installer in the repo. Supports 6 product variants via a bash selection menu or `--variant` CLI flag.
 
 **Variant system:**
-- Defined as `PRODUCTS` array entries: `"Display Name|variant_key|git_branch|part_number"`
+- Defined as `PRODUCTS` array entries: `"Display Name|variant_key|git_tag|part_number"`
 - Each variant has entries in `PM5_PERIPHERALS` and `PM5_OVERLAYS` associative arrays
 - Peripherals drive conditional apt/pip dependencies, kernel modules, and GPIO groups
 - The variant key is written to `/opt/pironman5/.variant` at install time
+- All variants pin `pironman5` repo to tag `1.3.11`, `pm_auto` to `2.0.1`
+
+**Supported variants:** base, mini, max, pro-max, ups, nas
 
 **CLI flags:** `--variant <key>`, `--pipower5`, `--container`, `--plain-text`
+
+**Peripheral-driven dependencies:**
+- `oled` → apt: libjpeg-dev libfreetype6-dev libopenjp2-7 kmod i2c-tools; pip: Pillow smbus2; group: i2c; module: i2c-dev
+- `ws2812` → pip: adafruit-circuitpython-neopixel-spi Adafruit-Blinka; group: spi gpio
+- `sf_rgb_led` → pip: numpy; group: i2c
+- `rtl8125` → pre-install: setup_rtl8125.sh; apt: build-essential gcc g++
+- `gpio_fan_state` / `vibration_switch` → apt: python3-gpiozero; pip: rpi.lgpio; group: gpio
+- `pi5_power_button` → apt: build-essential gcc g++; pip: evdev; group: input
 
 **Other files in `pironman5/`:**
 - `entrypoint.sh` — Docker container entrypoint; handles shutdown proxying to host
