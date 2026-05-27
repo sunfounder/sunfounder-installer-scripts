@@ -47,6 +47,7 @@ TITLE "Install fusion-hat python library"
 CD "$HOME/fusion-hat" "Change to fusion-hat directory"
 RUN "pip3 install . --break-system-packages" "Install fusion-hat library"
 RUN "pip3 uninstall -y RPi.GPIO --break-system-packages" "Uninstall RPi.GPIO"
+RUN "register-python-argcomplete -s bash fusion_hat > /etc/bash_completion.d/fusion_hat" "Install tab completion"
 
 TITLE "Setup audio"
 RUN "rm -f /opt/setup_fusion_hat_audio.sh" "Remove existing audio script"
