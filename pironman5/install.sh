@@ -339,6 +339,10 @@ fi
 TITLE "Create symlinks"
 RUN "ln -sf /opt/pironman5/venv/bin/pironman5 /usr/local/bin/pironman5" "Create pironman5 symlink"
 
+# --- Shell completion ---
+TITLE "Setup shell completion"
+RUN "register-python-argcomplete pironman5 > /etc/bash_completion.d/pironman5" "Register bash completion"
+
 # --- Systemd auto-start ---
 if [ "$IS_CONTAINER" = false ]; then
     TITLE "Setup auto-start"
