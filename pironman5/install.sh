@@ -143,7 +143,10 @@ else
             selected=$((choice - 1))
             sel_name="${PRODUCTS[$selected]%%|*}"
             echo ""
-            echo "Selected: ${sel_name}. Installing..."
+            echo "========================================="
+            echo "  Selected: ${sel_name}"
+            echo "  Starting installation..."
+            echo "========================================="
             echo ""
             break
         fi
