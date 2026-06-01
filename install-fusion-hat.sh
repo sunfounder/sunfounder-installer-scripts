@@ -1,6 +1,11 @@
 #!/bin/bash
 
-INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
+# ── Branch overrides (set via environment variable to test feature branches) ──
+#   FUSION_HAT_BRANCH=refactor/remove-eeprom sudo bash install-fusion-hat.sh
+FUSION_HAT_BRANCH="${FUSION_HAT_BRANCH:-main}"
+INSTALLER_BRANCH="${INSTALLER_BRANCH:-main}"
+
+INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/${INSTALLER_BRANCH}/tools/installer_1.1.0.sh"
 
 # Source Installer
 curl -fsSL $INSTALLER_URL -o installer.sh
@@ -34,7 +39,7 @@ RUN "apt-get install -y ${APT_INSTALL_LIST[*]}" "Install apt dependencies"
 TITLE "Install fusion-hat library"
 CD "$HOME/" "Change to home directory"
 RUN "rm -rf $HOME/fusion-hat" "Remove existing fusion-hat library"
-RUN "git clone --depth=1 --branch main https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library"
+RUN "git clone --depth=1 --branch ${FUSION_HAT_BRANCH} https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library (${FUSION_HAT_BRANCH})"
 RUN "chown -R $USERNAME:$USERNAME $HOME/fusion-hat" "Change ownership of fusion-hat library to $USERNAME"
 
 TITLE "Install fusion-hat driver"
@@ -53,5 +58,18 @@ TITLE "Setup audio"
 RUN "sudo bash $HOME/fusion-hat/fusion_hat/scripts/setup_fusion_hat_audio.sh --skip-test" "Setup audio"
 
 installer_install
+
+# Configure dtoverlay in config.txt (required for Fusion HAT)
+installer_log_title "Configure device-tree overlay"
+if [ -n "$INSTALLER_CONFIG_TXT_FILE" ]; then
+    if grep -q "^dtoverlay=sunfounder-fusionhat" "$INSTALLER_CONFIG_TXT_FILE"; then
+        installer_log_success "dtoverlay=sunfounder-fusionhat already in config.txt"
+    else
+        config_txt_set "$INSTALLER_CONFIG_TXT_FILE" "dtoverlay=sunfounder-fusionhat"
+        installer_log_success "Added dtoverlay=sunfounder-fusionhat to config.txt"
+    fi
+else
+    installer_log_failed "config.txt not found, please add 'dtoverlay=sunfounder-fusionhat' manually"
+fi
 
 installer_prompt_reboot "Remember to run 'fusion_hat speaker setup' to enable speaker after reboot."
