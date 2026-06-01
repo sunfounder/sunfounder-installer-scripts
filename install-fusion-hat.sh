@@ -47,6 +47,7 @@ CD "$HOME/fusion-hat/driver" "Change to driver directory"
 RUN "make all" "Compile driver"
 RUN "make install" "Install driver"
 RUN "make clean" "Clean driver"
+RUN 'config_txt_set "$INSTALLER_CONFIG_TXT_FILE" "dtoverlay=sunfounder-fusionhat"' "enable driver in config.txt"
 
 TITLE "Install fusion-hat python library"
 CD "$HOME/fusion-hat" "Change to fusion-hat directory"
@@ -58,18 +59,5 @@ TITLE "Setup audio"
 RUN "sudo bash $HOME/fusion-hat/fusion_hat/scripts/setup_fusion_hat_audio.sh --skip-test" "Setup audio"
 
 installer_install
-
-# Configure dtoverlay in config.txt (required for Fusion HAT)
-installer_log_title "Configure device-tree overlay"
-if [ -n "$INSTALLER_CONFIG_TXT_FILE" ]; then
-    if grep -q "^dtoverlay=sunfounder-fusionhat" "$INSTALLER_CONFIG_TXT_FILE"; then
-        installer_log_success "dtoverlay=sunfounder-fusionhat already in config.txt"
-    else
-        config_txt_set "$INSTALLER_CONFIG_TXT_FILE" "dtoverlay=sunfounder-fusionhat"
-        installer_log_success "Added dtoverlay=sunfounder-fusionhat to config.txt"
-    fi
-else
-    installer_log_failed "config.txt not found, please add 'dtoverlay=sunfounder-fusionhat' manually"
-fi
 
 installer_prompt_reboot "Remember to run 'fusion_hat speaker setup' to enable speaker after reboot."
