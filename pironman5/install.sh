@@ -56,6 +56,10 @@ if [ -n "$ARG_VARIANT" ]; then
     esac
 fi
 
+# Branch override via environment variable
+# Usage: PIRONMAN5_BRANCH=fix/promax curl ... | bash -s -- --variant pro-max
+BRANCH_OVERRIDE="${PIRONMAN5_BRANCH:-}"
+
 # ============================================================
 # Banner
 # ============================================================
@@ -93,7 +97,7 @@ declare -A PM5_PERIPHERALS
 PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
 PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
 PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
-PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed pi5_power_button"
+PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ip_address mac_address oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
 
 # --- DT overlays per variant ---
 declare -A PM5_OVERLAYS
@@ -154,6 +158,12 @@ else
     done
 
     IFS='|' read -r product_name variant branch part_number <<< "${PRODUCTS[$selected]}"
+fi
+
+# Apply branch override from environment variable
+if [ -n "$BRANCH_OVERRIDE" ]; then
+    installer_log_title "Branch override: ${branch} -> ${BRANCH_OVERRIDE}"
+    branch="$BRANCH_OVERRIDE"
 fi
 
 PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
