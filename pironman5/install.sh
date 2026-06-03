@@ -188,17 +188,13 @@ has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
 # Install Report
 # ============================================================
 echo ""
-# Check git source (same method as framework installer_update_git_urls)
-if installer_check_url_accessibility "https://github.com"; then
-    GIT_SOURCE="GitHub"
-else
-    GIT_SOURCE="Gitee"
-fi
+# Detect git source (uses framework function, idempotent)
+installer_detect_git_source
 
 echo "========================================="
 echo "  ${product_name}  v${PIRONMAN5_VERSION}"
 echo "  Branch: ${branch}"
-echo "  Source: ${GIT_SOURCE}"
+echo "  Source: ${INSTALLER_GIT_SOURCE}"
 if [ "$INSTALL_PIPOWER5" = true ]; then
     echo "  PiPower5 UPS: enabled"
 fi

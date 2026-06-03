@@ -99,22 +99,28 @@ installer_check_root_privileges() {
     fi
 }
 
-installer_update_git_urls() {
-    # Test GitHub accessibility
+installer_detect_git_source() {
+    # Silent detection: sets URL variables and INSTALLER_GIT_SOURCE flag.
+    # Idempotent — skips if already set. Products with custom reports call this early.
+    if [ -n "$INSTALLER_GIT_SOURCE" ]; then
+        return
+    fi
     if installer_check_url_accessibility "https://github.com"; then
-        # GitHub is accessible
         INSTALLER_GIT_REPO_URL="https://github.com/sunfounder/"
         INSTALLER_GIT_RAW_URL="https://raw.githubusercontent.com/sunfounder/"
-        echo "Using GitHub repositories"
+        INSTALLER_GIT_SOURCE="GitHub"
     else
-        # GitHub is not accessible, switch to Gitee
         INSTALLER_GIT_REPO_URL="https://gitee.com/sunfounder/"
         INSTALLER_GIT_RAW_URL="https://gitee.com/sunfounder/"
-        # Update import URLs to Gitee
         INSTALLER_PROGRESS_BAR_URL=$INSTALLER_PROGRESS_BAR_URL_GITEE
         INSTALLER_CONFIG_TXT_MANAGER_URL=$INSTALLER_CONFIG_TXT_MANAGER_URL_GITEE
-        echo "GitHub not accessible, switching to Gitee repositories"
+        INSTALLER_GIT_SOURCE="Gitee"
     fi
+}
+
+installer_update_git_urls() {
+    installer_detect_git_source
+    echo "Using ${INSTALLER_GIT_SOURCE} repositories"
 }
 
 installer_git_clone() {
