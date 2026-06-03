@@ -157,9 +157,9 @@ fi
 # ============================================================
 # Package Versions
 # ============================================================
-PM_AUTO_VERSION="2.0.1"
-DASHBOARD_VERSION="1.4.0"
-SF_RPI_STATUS_VERSION="1.1.8"
+PM_AUTO_BRANCH="v2"
+DASHBOARD_BRANCH="v2"
+SF_RPI_STATUS_BRANCH="main"
 
 GIT_REPO="https://github.com/sunfounder/"
 
@@ -195,9 +195,19 @@ if [ "$INSTALL_PIPOWER5" = true ]; then
     echo "  PiPower5 UPS: enabled"
 fi
 echo "  ---------------------------------------"
-echo "  pm_auto          ${PM_AUTO_VERSION}"
-echo "  pm_dashboard     ${DASHBOARD_VERSION}"
-echo "  sf_rpi_status    ${SF_RPI_STATUS_VERSION}"
+# Fetch component versions from GitHub
+_fetch_comp_version() {
+    local _url="https://raw.githubusercontent.com/sunfounder/${1}/${2}/$(echo ${1} | sed 's/-/_/g')/version.py"
+    local _raw=$(curl -fsSL "$_url" 2>/dev/null) || { echo "unknown"; return; }
+    echo "$_raw" | grep -oP '(?<=__version__\s*=\s*")[^"]*'
+}
+PM_AUTO_VER=$(_fetch_comp_version "pm_auto" "$PM_AUTO_BRANCH")
+DASHBOARD_VER=$(_fetch_comp_version "pm_dashboard" "$DASHBOARD_BRANCH")
+SF_RPI_STATUS_VER=$(_fetch_comp_version "sf_rpi_status" "$SF_RPI_STATUS_BRANCH")
+
+echo "  pm_auto          ${PM_AUTO_BRANCH}  (v${PM_AUTO_VER})"
+echo "  pm_dashboard     ${DASHBOARD_BRANCH}  (v${DASHBOARD_VER})"
+echo "  sf_rpi_status    ${SF_RPI_STATUS_BRANCH}  (v${SF_RPI_STATUS_VER})"
 echo "========================================="
 echo ""
 
@@ -354,9 +364,9 @@ RUN "${VENV_PIP} install --upgrade ${PIP_DEPS}" "Install Python packages"
 # --- Install Python source packages ---
 TITLE "Install Python packages from source"
 RUN "${VENV_PIP} install ./ " "Install pironman5"
-RUN "${VENV_PIP} install git+${GIT_REPO}pm_auto.git@${PM_AUTO_VERSION}" "Install pm_auto"
-RUN "${VENV_PIP} install git+${GIT_REPO}sf_rpi_status.git@${SF_RPI_STATUS_VERSION}" "Install sf_rpi_status"
-RUN "${VENV_PIP} install git+${GIT_REPO}pm_dashboard.git@${DASHBOARD_VERSION}" "Install pm_dashboard"
+RUN "${VENV_PIP} install git+${GIT_REPO}pm_auto.git@${PM_AUTO_BRANCH}" "Install pm_auto"
+RUN "${VENV_PIP} install git+${GIT_REPO}sf_rpi_status.git@${SF_RPI_STATUS_BRANCH}" "Install sf_rpi_status"
+RUN "${VENV_PIP} install git+${GIT_REPO}pm_dashboard.git@${DASHBOARD_BRANCH}" "Install pm_dashboard"
 
 # --- Install PiPower5 ---
 if [ "$INSTALL_PIPOWER5" = true ]; then
