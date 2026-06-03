@@ -481,7 +481,24 @@ if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro_max" ]; then
     echo ""
     read -p "Auto-launch dashboard on 4.3\" screen at startup? [Y/n]: " install_browser < /dev/tty
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
-        /opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
+        # Create XDG autostart entry
+        AUTOSTART_DIR="${HOME}/.config/autostart"
+        mkdir -p "$AUTOSTART_DIR"
+        cat > "${AUTOSTART_DIR}/pironman5-dashboard.desktop" << EOF
+[Desktop Entry]
+Type=Application
+Name=Pironman 5 Dashboard
+Comment=Auto-launch Pironman 5 dashboard on the 4.3" screen
+Exec=/opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
+X-GNOME-Autostart-enabled=true
+EOF
+        chown "${USERNAME}:${USERNAME}" "${AUTOSTART_DIR}/pironman5-dashboard.desktop"
+        echo "Autostart entry created. Dashboard will launch on next desktop login."
+
+        # Try to launch immediately if desktop is available
+        if [ -n "$DISPLAY" ]; then
+            /opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
+        fi
     fi
 fi
 
