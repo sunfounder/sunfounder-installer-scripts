@@ -389,7 +389,8 @@ RUN "ln -sf /opt/pironman5/venv/bin/pironman5 /usr/local/bin/pironman5" "Create 
 
 # --- Shell completion ---
 TITLE "Setup shell completion"
-RUN "[ -x /opt/pironman5/venv/bin/register-python-argcomplete ] && /opt/pironman5/venv/bin/register-python-argcomplete pironman5 > /etc/bash_completion.d/pironman5 || true" "Register bash completion"
+RUN "${VENV_PIP} install argcomplete" "Install argcomplete"
+RUN "/opt/pironman5/venv/bin/register-python-argcomplete pironman5 > /etc/bash_completion.d/pironman5" "Register bash completion"
 
 # --- Systemd auto-start ---
 if [ "$IS_CONTAINER" = false ]; then
