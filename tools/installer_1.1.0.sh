@@ -105,7 +105,6 @@ installer_update_git_urls() {
         # GitHub is accessible
         INSTALLER_GIT_REPO_URL="https://github.com/sunfounder/"
         INSTALLER_GIT_RAW_URL="https://raw.githubusercontent.com/sunfounder/"
-        echo "Using GitHub repositories"
     else
         # GitHub is not accessible, switch to Gitee
         INSTALLER_GIT_REPO_URL="https://gitee.com/sunfounder/"
@@ -113,7 +112,6 @@ installer_update_git_urls() {
         # Update import URLs to Gitee
         INSTALLER_PROGRESS_BAR_URL=$INSTALLER_PROGRESS_BAR_URL_GITEE
         INSTALLER_CONFIG_TXT_MANAGER_URL=$INSTALLER_CONFIG_TXT_MANAGER_URL_GITEE
-        echo "GitHub not accessible, switching to Gitee repositories"
     fi
 }
 
