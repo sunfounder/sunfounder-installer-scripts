@@ -397,8 +397,33 @@ if [ "$IS_CONTAINER" = false ]; then
             RUN "curl -fsSL https://github.com/sunfounder/pipower5/raw/refs/heads/main/sunfounder-pipower5.dtbo -o ${OVERLAY_PATH}/sunfounder-pipower5.dtbo" "Copy PiPower5 device tree overlay"
         fi
     fi
+fi
 
-    # --- Write dtoverlay to config.txt ---
+# --- Post-install scripts ---
+if [ "$IS_CONTAINER" = false ]; then
+    if has "gpio_fan_state" || has "vibration_switch"; then
+        TITLE "Run post-install scripts"
+        RUN "bash scripts/change_rpi.gpio_to_rpi.lgpio.sh" "Migrate RPi.GPIO to rpi.lgpio"
+    fi
+fi
+
+# --- Fix permissions ---
+if [ "$IS_CONTAINER" = false ]; then
+    TITLE "Finalize permissions"
+    RUN "chmod +x /opt/pironman5" "Set execution permission on work dir"
+    RUN "chown -R pironman5:pironman5 /opt/pironman5" "Set final ownership"
+fi
+
+# --- Write variant file ---
+TITLE "Write product variant"
+RUN "mkdir -p /opt/pironman5" "Ensure work directory exists"
+RUN "echo -n '${variant}' > /opt/pironman5/.variant" "Write variant identifier"
+if [ "$INSTALL_PIPOWER5" = true ]; then
+    RUN "echo -n 'pipower5' > /opt/pironman5/.custom_module" "Write custom module"
+fi
+
+# --- Write dtoverlay to config.txt ---
+if [ "$IS_CONTAINER" = false ]; then
     TITLE "Configure device tree overlays"
     CONFIG_SEARCH_PATHS="/boot/firmware/config.txt /boot/config.txt"
     CONFIG_PATH=""
@@ -429,29 +454,6 @@ if [ "$IS_CONTAINER" = false ]; then
     fi
 fi
 
-# --- Post-install scripts ---
-if [ "$IS_CONTAINER" = false ]; then
-    if has "gpio_fan_state" || has "vibration_switch"; then
-        TITLE "Run post-install scripts"
-        RUN "bash scripts/change_rpi.gpio_to_rpi.lgpio.sh" "Migrate RPi.GPIO to rpi.lgpio"
-    fi
-fi
-
-# --- Fix permissions ---
-if [ "$IS_CONTAINER" = false ]; then
-    TITLE "Finalize permissions"
-    RUN "chmod +x /opt/pironman5" "Set execution permission on work dir"
-    RUN "chown -R pironman5:pironman5 /opt/pironman5" "Set final ownership"
-fi
-
-# --- Write variant file ---
-TITLE "Write product variant"
-RUN "mkdir -p /opt/pironman5" "Ensure work directory exists"
-RUN "echo -n '${variant}' > /opt/pironman5/.variant" "Write variant identifier"
-if [ "$INSTALL_PIPOWER5" = true ]; then
-    RUN "echo -n 'pipower5' > /opt/pironman5/.custom_module" "Write custom module"
-fi
-
 # ============================================================
 # Execute Installation
 # ============================================================
@@ -466,11 +468,10 @@ fi
 # ============================================================
 if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro_max" ]; then
     echo ""
-    echo "Pironman 5 Pro Max has a built-in 4.3-inch DSI touchscreen."
-    echo "Do you want the dashboard to auto-launch on this screen at startup?"
+    echo "Do you want the dashboard to auto-launch on the 4.3\" screen at startup?"
     read -p "Auto-launch dashboard on 4.3\" screen? [Y/n]: " install_browser < /dev/tty
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
-        /opt/pironman5/venv/bin/python3 ~/pironman5/pironman5/_launch_browser.py
+        /opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
     fi
 fi
 
