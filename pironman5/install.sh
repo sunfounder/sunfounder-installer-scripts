@@ -51,7 +51,9 @@ done
 # Validate --variant
 if [ -n "$ARG_VARIANT" ]; then
     case "$ARG_VARIANT" in
-        base|mini|max|pro-max) ;;
+        base|mini|max|pro-max|pro_max)
+            # Normalize pro-max to pro_max for internal key
+            [ "$ARG_VARIANT" = "pro-max" ] && ARG_VARIANT="pro_max" ;;
         *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max"; exit 1 ;;
     esac
 fi
@@ -84,12 +86,12 @@ echo -e "\033[0m"
 # ============================================================
 
 # --- Product list (shown in menu) ---
-# Format: "Display Name|variant|branch|part_number"
+# Format: "Display Name|variant|branch"
 PRODUCTS=(
-    "Pironman 5|base|1.3.x|0306V10"
-    "Pironman 5 Mini|mini|1.3.x|0308V10"
-    "Pironman 5 Max|max|1.3.x|0306V11"
-    "Pironman 5 Pro Max|pro-max|1.3.x|0316V10"
+    "Pironman 5|base|1.3.x"
+    "Pironman 5 Mini|mini|1.3.x"
+    "Pironman 5 Max|max|1.3.x"
+    "Pironman 5 Pro Max|pro_max|1.3.x"
 )
 
 # --- Peripherals per variant ---
@@ -97,25 +99,24 @@ declare -A PM5_PERIPHERALS
 PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
 PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
 PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
-PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ip_address mac_address oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
+PM5_PERIPHERALS[pro_max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ip_address mac_address oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
 
 # --- DT overlays per variant ---
 declare -A PM5_OVERLAYS
 PM5_OVERLAYS[base]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[mini]="sunfounder-pironman5mini.dtbo"
 PM5_OVERLAYS[max]="sunfounder-pironman5.dtbo"
-PM5_OVERLAYS[pro-max]="sunfounder-pironman5promax.dtbo"
+PM5_OVERLAYS[pro_max]="sunfounder-pironman5promax.dtbo"
 
 # ============================================================
 if [ -n "$ARG_VARIANT" ]; then
     # --variant mode: skip interactive menu
     for prod in "${PRODUCTS[@]}"; do
-        IFS='|' read -r p_name p_variant p_branch p_part <<< "$prod"
+        IFS='|' read -r p_name p_variant p_branch <<< "$prod"
         if [ "$p_variant" = "$ARG_VARIANT" ]; then
             product_name="$p_name"
             variant="$p_variant"
             branch="$p_branch"
-            part_number="$p_part"
             break
         fi
     done
@@ -157,7 +158,7 @@ else
         echo "Invalid choice, please try again."
     done
 
-    IFS='|' read -r product_name variant branch part_number <<< "${PRODUCTS[$selected]}"
+    IFS='|' read -r product_name variant branch <<< "${PRODUCTS[$selected]}"
 fi
 
 # Apply branch override from environment variable
@@ -463,7 +464,7 @@ fi
 # ============================================================
 # Pro Max: Auto-launch browser
 # ============================================================
-if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro-max" ]; then
+if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro_max" ]; then
     echo ""
     echo "Do you want the browser to open automatically on desktop startup?"
     echo "This will install an autostart entry that launches the Pironman 5 dashboard in a browser."
