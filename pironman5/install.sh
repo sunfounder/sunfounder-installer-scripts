@@ -425,32 +425,11 @@ fi
 # --- Write dtoverlay to config.txt ---
 if [ "$IS_CONTAINER" = false ]; then
     TITLE "Configure device tree overlays"
-    CONFIG_SEARCH_PATHS="/boot/firmware/config.txt /boot/config.txt"
-    CONFIG_PATH=""
-    for p in $CONFIG_SEARCH_PATHS; do
-        if [ -f "$p" ]; then
-            CONFIG_PATH="$p"
-            break
-        fi
+    for overlay in $DT_OVERLAYS; do
+        DTOVERLAY_ADD "$overlay"
     done
-    if [ -z "$CONFIG_PATH" ]; then
-        installer_log_failed "config.txt not found. Checked: ${CONFIG_SEARCH_PATHS}"
-    else
-        for overlay in $DT_OVERLAYS; do
-            name="${overlay%.dtbo}"
-            if grep -q "^dtoverlay=${name}" "$CONFIG_PATH" 2>/dev/null; then
-                installer_log_success "dtoverlay=${name} already present in config.txt"
-            else
-                RUN "echo 'dtoverlay=${name}' >> ${CONFIG_PATH}" "Add dtoverlay=${name} to config.txt"
-            fi
-        done
-        if [ "$INSTALL_PIPOWER5" = true ]; then
-            if grep -q "^dtoverlay=sunfounder-pipower5" "$CONFIG_PATH" 2>/dev/null; then
-                installer_log_success "dtoverlay=sunfounder-pipower5 already present in config.txt"
-            else
-                RUN "echo 'dtoverlay=sunfounder-pipower5' >> ${CONFIG_PATH}" "Add dtoverlay=sunfounder-pipower5 to config.txt"
-            fi
-        fi
+    if [ "$INSTALL_PIPOWER5" = true ]; then
+        DTOVERLAY_ADD "sunfounder-pipower5.dtbo"
     fi
 fi
 

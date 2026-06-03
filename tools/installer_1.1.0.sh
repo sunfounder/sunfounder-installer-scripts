@@ -216,6 +216,19 @@ CLONE() {
     INSTALLER_COMMANDS_COUNT=$((INSTALLER_COMMANDS_COUNT+1))
 }
 
+DTOVERLAY_ADD() {
+    # DTOVERLAY_ADD overlay_name
+    # Checks if dtoverlay already exists in config.txt; if not, queues a RUN to add it.
+    local overlay="$1"
+    local name="${overlay%.dtbo}"
+    if [ -n "$INSTALLER_CONFIG_TXT_FILE" ] && grep -q "^dtoverlay=${name}" "$INSTALLER_CONFIG_TXT_FILE" 2>/dev/null; then
+        installer_add_command TITLE "dtoverlay=${name} already present in config.txt"
+    else
+        installer_add_command DTOVERLAY "$name" "Add dtoverlay=${name} to config.txt"
+        INSTALLER_COMMANDS_COUNT=$((INSTALLER_COMMANDS_COUNT+1))
+    fi
+}
+
 installer_init() {
     # Check root privileges
     installer_check_root_privileges
@@ -271,6 +284,10 @@ installer_install() {
             cd "${command[1]}"
         elif [ "${command[0]}" == "CLONE" ]; then
             installer_git_clone "${command[1]}" "${command[2]}"
+        elif [ "${command[0]}" == "DTOVERLAY" ]; then
+            echo "dtoverlay=${command[1]}" >> "$INSTALLER_CONFIG_TXT_FILE"
+            installer_log_success "${command[2]}"
+            command_count=$((command_count+1))
         fi
         if [ "$INSTALLER_PLAIN_TEXT" != true ]; then
             progress_bar_draw $(((command_count+1)*100/INSTALLER_COMMANDS_COUNT))
