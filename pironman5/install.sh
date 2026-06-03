@@ -168,7 +168,7 @@ PIRONMAN5_VERSION="unknown"
 _fetch_version() {
     local _vurl="https://raw.githubusercontent.com/sunfounder/pironman5/${1}/pironman5/version.py"
     local _vraw=$(curl -fsSL "$_vurl" 2>/dev/null) || return 1
-    PIRONMAN5_VERSION=$(echo "$_vraw" | awk -F'"' '/__version__/ {print $2}')
+    PIRONMAN5_VERSION=$(echo "$_vraw" | awk '/__version__/ { gsub(/[^0-9.]/, ""); print }')
 }
 _fetch_version "$branch"
 
@@ -207,7 +207,7 @@ echo "  ---------------------------------------"
 _fetch_comp_version() {
     local _url="https://raw.githubusercontent.com/sunfounder/${1}/${2}/$(echo ${1} | sed 's/-/_/g')/version.py"
     local _raw=$(curl -fsSL "$_url" 2>/dev/null) || { echo "unknown"; return; }
-    echo "$_raw" | awk -F'"' '/__version__/ {print $2}'
+    echo "$_raw" | awk '/__version__/ { gsub(/[^0-9.]/, ""); print }'
 }
 PM_AUTO_VER=$(_fetch_comp_version "pm_auto" "$PM_AUTO_BRANCH")
 DASHBOARD_VER=$(_fetch_comp_version "pm_dashboard" "$DASHBOARD_BRANCH")
