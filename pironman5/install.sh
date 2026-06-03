@@ -188,8 +188,8 @@ has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
 # Install Report
 # ============================================================
 echo ""
-# Check git source
-if curl -fsSL --connect-timeout 3 https://github.com > /dev/null 2>&1; then
+# Check git source (same method as framework installer_update_git_urls)
+if installer_check_url_accessibility "https://github.com"; then
     GIT_SOURCE="GitHub"
 else
     GIT_SOURCE="Gitee"
