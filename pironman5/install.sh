@@ -466,9 +466,9 @@ fi
 # ============================================================
 if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro_max" ]; then
     echo ""
-    echo "Do you want the browser to open automatically on desktop startup?"
-    echo "This will install an autostart entry that launches the Pironman 5 dashboard in a browser."
-    read -p "Install auto-launch browser? [Y/n]: " install_browser < /dev/tty
+    echo "Pironman 5 Pro Max has a built-in 4.3-inch DSI touchscreen."
+    echo "Do you want the dashboard to auto-launch on this screen at startup?"
+    read -p "Auto-launch dashboard on 4.3\" screen? [Y/n]: " install_browser < /dev/tty
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
         /opt/pironman5/venv/bin/python3 ~/pironman5/pironman5/_launch_browser.py
     fi
