@@ -168,7 +168,7 @@ PIRONMAN5_VERSION="unknown"
 _fetch_version() {
     local _vurl="https://raw.githubusercontent.com/sunfounder/pironman5/${1}/pironman5/version.py"
     local _vraw=$(curl -fsSL "$_vurl" 2>/dev/null) || return 1
-    PIRONMAN5_VERSION=$(echo "$_vraw" | grep -oP '(?<=__version__\s*=\s*")[^"]*')
+    PIRONMAN5_VERSION=$(echo "$_vraw" | awk -F'"' '/__version__/ {print $2}')
 }
 _fetch_version "$branch"
 
@@ -188,9 +188,17 @@ has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
 # Install Report
 # ============================================================
 echo ""
+# Check git source
+if curl -fsSL --connect-timeout 3 https://github.com > /dev/null 2>&1; then
+    GIT_SOURCE="GitHub"
+else
+    GIT_SOURCE="Gitee"
+fi
+
 echo "========================================="
 echo "  ${product_name}  v${PIRONMAN5_VERSION}"
 echo "  Branch: ${branch}"
+echo "  Source: ${GIT_SOURCE}"
 if [ "$INSTALL_PIPOWER5" = true ]; then
     echo "  PiPower5 UPS: enabled"
 fi
@@ -199,7 +207,7 @@ echo "  ---------------------------------------"
 _fetch_comp_version() {
     local _url="https://raw.githubusercontent.com/sunfounder/${1}/${2}/$(echo ${1} | sed 's/-/_/g')/version.py"
     local _raw=$(curl -fsSL "$_url" 2>/dev/null) || { echo "unknown"; return; }
-    echo "$_raw" | grep -oP '(?<=__version__\s*=\s*")[^"]*'
+    echo "$_raw" | awk -F'"' '/__version__/ {print $2}'
 }
 PM_AUTO_VER=$(_fetch_comp_version "pm_auto" "$PM_AUTO_BRANCH")
 DASHBOARD_VER=$(_fetch_comp_version "pm_dashboard" "$DASHBOARD_BRANCH")
@@ -290,7 +298,6 @@ fi
 # ============================================================
 
 # --- Clone repository ---
-TITLE "Installing ${product_name}"
 TITLE "Install build dependencies"
 RUN "DEBIAN_FRONTEND=noninteractive apt-get update" "Update package list"
 RUN "DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv git curl" "Install build dependencies"
