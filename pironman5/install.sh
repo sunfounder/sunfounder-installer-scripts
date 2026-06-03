@@ -146,13 +146,6 @@ else
         }
         if [ "$choice" -ge 1 ] 2>/dev/null && [ "$choice" -le "$n" ] 2>/dev/null; then
             selected=$((choice - 1))
-            sel_name="${PRODUCTS[$selected]%%|*}"
-            echo ""
-            echo "========================================="
-            echo "  Selected: ${sel_name}"
-            echo "  Starting installation..."
-            echo "========================================="
-            echo ""
             break
         fi
         echo "Invalid choice, please try again."
@@ -160,23 +153,6 @@ else
 
     IFS='|' read -r product_name variant branch <<< "${PRODUCTS[$selected]}"
 fi
-
-# Apply branch override from environment variable
-if [ -n "$BRANCH_OVERRIDE" ]; then
-    installer_log_title "Branch override: ${branch} -> ${BRANCH_OVERRIDE}"
-    branch="$BRANCH_OVERRIDE"
-fi
-
-PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
-DT_OVERLAYS="${PM5_OVERLAYS[$variant]}"
-
-installer_log_title "\nPreparing installation for ${product_name} (branch: ${branch})"
-if [ "$INSTALL_PIPOWER5" = true ]; then
-    installer_log_title "PiPower5 UPS module: enabled"
-fi
-
-# Helper: check if a peripheral is present
-has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
 
 # ============================================================
 # Package Versions
@@ -186,6 +162,44 @@ DASHBOARD_VERSION="1.4.0"
 SF_RPI_STATUS_VERSION="1.1.8"
 
 GIT_REPO="https://github.com/sunfounder/"
+
+# Fetch pironman5 version from GitHub
+PIRONMAN5_VERSION="unknown"
+_fetch_version() {
+    local _vurl="https://raw.githubusercontent.com/sunfounder/pironman5/${1}/pironman5/version.py"
+    local _vraw=$(curl -fsSL "$_vurl" 2>/dev/null) || return 1
+    PIRONMAN5_VERSION=$(echo "$_vraw" | grep -oP '(?<=__version__\s*=\s*")[^"]*')
+}
+_fetch_version "$branch"
+
+# Apply branch override from environment variable
+if [ -n "$BRANCH_OVERRIDE" ]; then
+    branch="$BRANCH_OVERRIDE"
+    _fetch_version "$branch"
+fi
+
+PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
+DT_OVERLAYS="${PM5_OVERLAYS[$variant]}"
+
+# Helper: check if a peripheral is present
+has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
+
+# ============================================================
+# Install Report
+# ============================================================
+echo ""
+echo "========================================="
+echo "  ${product_name}  v${PIRONMAN5_VERSION}"
+echo "  Branch: ${branch}"
+if [ "$INSTALL_PIPOWER5" = true ]; then
+    echo "  PiPower5 UPS: enabled"
+fi
+echo "  ---------------------------------------"
+echo "  pm_auto          ${PM_AUTO_VERSION}"
+echo "  pm_dashboard     ${DASHBOARD_VERSION}"
+echo "  sf_rpi_status    ${SF_RPI_STATUS_VERSION}"
+echo "========================================="
+echo ""
 
 # ============================================================
 # Build Dependency Sets (deduplicated)
