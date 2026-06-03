@@ -471,8 +471,7 @@ fi
 # ============================================================
 if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro_max" ]; then
     echo ""
-    echo "Do you want the dashboard to auto-launch on the 4.3\" screen at startup?"
-    read -p "Auto-launch dashboard on 4.3\" screen? [Y/n]: " install_browser < /dev/tty
+    read -p "Auto-launch dashboard on 4.3\" screen at startup? [Y/n]: " install_browser < /dev/tty
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
         /opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
     fi
