@@ -1,6 +1,11 @@
 #!/bin/bash
 
-INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/main/tools/installer_1.1.0.sh"
+# ── Branch overrides (set via environment variable to test feature branches) ──
+#   FUSION_HAT_BRANCH=refactor/remove-eeprom sudo bash install-fusion-hat.sh
+FUSION_HAT_BRANCH="${FUSION_HAT_BRANCH:-main}"
+INSTALLER_BRANCH="${INSTALLER_BRANCH:-main}"
+
+INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/${INSTALLER_BRANCH}/tools/installer_1.1.0.sh"
 
 # Source Installer
 curl -fsSL $INSTALLER_URL -o installer.sh
@@ -34,7 +39,7 @@ RUN "apt-get install -y ${APT_INSTALL_LIST[*]}" "Install apt dependencies"
 TITLE "Install fusion-hat library"
 CD "$HOME/" "Change to home directory"
 RUN "rm -rf $HOME/fusion-hat" "Remove existing fusion-hat library"
-RUN "git clone --depth=1 --branch main https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library"
+RUN "git clone --depth=1 --branch ${FUSION_HAT_BRANCH} https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library (${FUSION_HAT_BRANCH})"
 RUN "chown -R $USERNAME:$USERNAME $HOME/fusion-hat" "Change ownership of fusion-hat library to $USERNAME"
 
 TITLE "Install fusion-hat driver"
@@ -42,15 +47,17 @@ CD "$HOME/fusion-hat/driver" "Change to driver directory"
 RUN "make all" "Compile driver"
 RUN "make install" "Install driver"
 RUN "make clean" "Clean driver"
+RUN 'config_txt_set "$INSTALLER_CONFIG_TXT_FILE" "dtoverlay=sunfounder-fusionhat"' "enable driver in config.txt"
 
 TITLE "Install fusion-hat python library"
 CD "$HOME/fusion-hat" "Change to fusion-hat directory"
 RUN "pip3 install . --break-system-packages" "Install fusion-hat library"
 RUN "pip3 uninstall -y RPi.GPIO --break-system-packages" "Uninstall RPi.GPIO"
+RUN "register-python-argcomplete -s bash fusion_hat > /etc/bash_completion.d/fusion_hat" "Install tab completion"
 
 TITLE "Setup audio"
-RUN "fusion_hat setup_speaker --skip-test" "Setup audio"
+RUN "sudo bash $HOME/fusion-hat/fusion_hat/scripts/setup_fusion_hat_audio.sh --skip-test" "Setup audio"
 
 installer_install
 
-installer_prompt_reboot "Remember to run fusion_hat setup_speaker to enable speaker after reboot."
+installer_prompt_reboot "Remember to run 'fusion_hat speaker setup' to enable speaker after reboot."

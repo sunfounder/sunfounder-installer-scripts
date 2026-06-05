@@ -99,22 +99,28 @@ installer_check_root_privileges() {
     fi
 }
 
-installer_update_git_urls() {
-    # Test GitHub accessibility
+installer_detect_git_source() {
+    # Silent detection: sets URL variables and INSTALLER_GIT_SOURCE flag.
+    # Idempotent — skips if already set. Products with custom reports call this early.
+    if [ -n "$INSTALLER_GIT_SOURCE" ]; then
+        return
+    fi
     if installer_check_url_accessibility "https://github.com"; then
-        # GitHub is accessible
         INSTALLER_GIT_REPO_URL="https://github.com/sunfounder/"
         INSTALLER_GIT_RAW_URL="https://raw.githubusercontent.com/sunfounder/"
-        echo "Using GitHub repositories"
+        INSTALLER_GIT_SOURCE="GitHub"
     else
-        # GitHub is not accessible, switch to Gitee
         INSTALLER_GIT_REPO_URL="https://gitee.com/sunfounder/"
         INSTALLER_GIT_RAW_URL="https://gitee.com/sunfounder/"
-        # Update import URLs to Gitee
         INSTALLER_PROGRESS_BAR_URL=$INSTALLER_PROGRESS_BAR_URL_GITEE
         INSTALLER_CONFIG_TXT_MANAGER_URL=$INSTALLER_CONFIG_TXT_MANAGER_URL_GITEE
-        echo "GitHub not accessible, switching to Gitee repositories"
+        INSTALLER_GIT_SOURCE="Gitee"
     fi
+}
+
+installer_update_git_urls() {
+    installer_detect_git_source
+    echo "Using ${INSTALLER_GIT_SOURCE} repositories"
 }
 
 installer_git_clone() {
@@ -216,6 +222,19 @@ CLONE() {
     INSTALLER_COMMANDS_COUNT=$((INSTALLER_COMMANDS_COUNT+1))
 }
 
+DTOVERLAY_ADD() {
+    # DTOVERLAY_ADD overlay_name
+    # Checks if dtoverlay already exists in config.txt; if not, queues a RUN to add it.
+    local overlay="$1"
+    local name="${overlay%.dtbo}"
+    if [ -n "$INSTALLER_CONFIG_TXT_FILE" ] && grep -q "^dtoverlay=${name}" "$INSTALLER_CONFIG_TXT_FILE" 2>/dev/null; then
+        installer_add_command TITLE "dtoverlay=${name} already present in config.txt"
+    else
+        installer_add_command DTOVERLAY "$name" "Add dtoverlay=${name} to config.txt"
+        INSTALLER_COMMANDS_COUNT=$((INSTALLER_COMMANDS_COUNT+1))
+    fi
+}
+
 installer_init() {
     # Check root privileges
     installer_check_root_privileges
@@ -271,6 +290,10 @@ installer_install() {
             cd "${command[1]}"
         elif [ "${command[0]}" == "CLONE" ]; then
             installer_git_clone "${command[1]}" "${command[2]}"
+        elif [ "${command[0]}" == "DTOVERLAY" ]; then
+            echo "dtoverlay=${command[1]}" >> "$INSTALLER_CONFIG_TXT_FILE"
+            installer_log_success "${command[2]}"
+            command_count=$((command_count+1))
         fi
         if [ "$INSTALLER_PLAIN_TEXT" != true ]; then
             progress_bar_draw $(((command_count+1)*100/INSTALLER_COMMANDS_COUNT))

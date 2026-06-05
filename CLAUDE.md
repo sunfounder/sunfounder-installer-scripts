@@ -11,7 +11,16 @@ This repo hosts installer shell scripts for SunFounder Raspberry Pi HAT products
 **Two installer framework generations live side by side in `tools/`:**
 
 - **v1.0** (`installer.sh` + `progress_bar.sh`) — Older style. Product scripts build a `COMMANDS` bash array of eval-able strings, then call `install $COMMANDS`. Used by `install-tft35ips.sh` and `install_portainer.sh`.
-- **v1.1.0** (`installer_1.1.0.sh` + `progress_bar_1.1.0.sh`) — Current standard. Uses a declarative DSL: product scripts call `TITLE`, `RUN`, `CD`, `CLONE` to queue operations, then `installer_install` executes them with a progress bar. Supports Gitee fallback for mainland China users. Used by all recent product installers.
+- **v1.1.0** (`installer_1.1.0.sh` + `progress_bar_1.1.0.sh`) — Current standard. Uses a declarative DSL: product scripts call `TITLE`, `RUN`, `CD`, `CLONE`, `DTOVERLAY_ADD` to queue operations, then `installer_install` executes them with a progress bar. Supports Gitee fallback for mainland China users. Used by all recent product installers.
+
+**DSL commands (v1.1.0):**
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `TITLE` | `TITLE "Section name"` | Section header, no progress count |
+| `RUN` | `RUN "command" "description"` | Shell command with progress step |
+| `CD` | `CD "/path"` | Change working directory |
+| `CLONE` | `CLONE "url" "branch"` | Git clone with progress step |
+| `DTOVERLAY_ADD` | `DTOVERLAY_ADD "overlay.dtbo"` | Add dtoverlay to config.txt; auto-skips if already present |
 
 **Product installer scripts** (root level) each follow this pattern:
 1. Set `INSTALLER_URL` pointing to the framework on `refs/heads/main`
@@ -43,15 +52,26 @@ This repo hosts installer shell scripts for SunFounder Raspberry Pi HAT products
 
 ## Pironman 5 installer (`pironman5/install.sh`)
 
-The most complex installer in the repo. Supports 5 product variants via a bash selection menu or `--variant` CLI flag.
+The most complex installer in the repo. Supports 6 product variants via a bash selection menu or `--variant` CLI flag.
 
 **Variant system:**
 - Defined as `PRODUCTS` array entries: `"Display Name|variant_key|git_branch|part_number"`
 - Each variant has entries in `PM5_PERIPHERALS` and `PM5_OVERLAYS` associative arrays
 - Peripherals drive conditional apt/pip dependencies, kernel modules, and GPIO groups
 - The variant key is written to `/opt/pironman5/.variant` at install time
+- All variants follow the `1.3.x` branch; `pm_auto` pinned to `2.0.1`
+
+**Supported variants:** base, mini, max, pro-max, ups, nas
 
 **CLI flags:** `--variant <key>`, `--pipower5`, `--container`, `--plain-text`
+
+**Peripheral-driven dependencies:**
+- `oled` → apt: libjpeg-dev libfreetype6-dev libopenjp2-7 kmod i2c-tools; pip: Pillow smbus2; group: i2c; module: i2c-dev
+- `ws2812` → pip: adafruit-circuitpython-neopixel-spi Adafruit-Blinka; group: spi gpio
+- `sf_rgb_led` → pip: numpy; group: i2c
+- `rtl8125` → pre-install: setup_rtl8125.sh; apt: build-essential gcc g++
+- `gpio_fan_state` / `vibration_switch` → apt: python3-gpiozero; pip: rpi.lgpio; group: gpio
+- `pi5_power_button` → apt: build-essential gcc g++; pip: evdev; group: input
 
 **Other files in `pironman5/`:**
 - `entrypoint.sh` — Docker container entrypoint; handles shutdown proxying to host

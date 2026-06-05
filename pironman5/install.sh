@@ -51,10 +51,16 @@ done
 # Validate --variant
 if [ -n "$ARG_VARIANT" ]; then
     case "$ARG_VARIANT" in
-        base|mini|max|pro-max|ups) ;;
+        base|mini|max|pro-max|pro_max|ups)
+            # Normalize pro-max to pro_max for internal key
+            [ "$ARG_VARIANT" = "pro-max" ] && ARG_VARIANT="pro_max" ;;
         *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max, ups"; exit 1 ;;
     esac
 fi
+
+# Branch override via environment variable
+# Usage: PIRONMAN5_BRANCH=fix/promax curl ... | bash -s -- --variant pro-max
+BRANCH_OVERRIDE="${PIRONMAN5_BRANCH:-}"
 
 # ============================================================
 # Banner
@@ -80,13 +86,13 @@ echo -e "\033[0m"
 # ============================================================
 
 # --- Product list (shown in menu) ---
-# Format: "Display Name|variant|branch|part_number"
+# Format: "Display Name|variant|branch"
 PRODUCTS=(
-    "Pironman 5|base|1.3.x|0306V10"
-    "Pironman 5 Mini|mini|1.3.x|0308V10"
-    "Pironman 5 Max|max|1.3.x|0306V11"
-    "Pironman 5 Pro Max|pro-max|1.3.x|0316V10"
-    "Pironman 5 UPS|ups|1.3.x|2602V10"
+    "Pironman 5|base|1.3.x"
+    "Pironman 5 Mini|mini|1.3.x"
+    "Pironman 5 Max|max|1.3.x"
+    "Pironman 5 Pro Max|pro_max|1.3.x"
+    "Pironman 5 UPS|ups|1.3.x"
 )
 
 # --- Peripherals per variant ---
@@ -94,7 +100,7 @@ declare -A PM5_PERIPHERALS
 PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
 PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
 PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
-PM5_PERIPHERALS[pro-max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled oled_sleep ws2812 pwm_fan_speed pi5_power_button"
+PM5_PERIPHERALS[pro_max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ip_address mac_address oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
 PM5_PERIPHERALS[ups]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit delete_log_file debug_level restart_service reboot shutdown ip_address mac_address clear_history oled oled_sleep oled_page_mix oled_page_performance oled_page_ips oled_page_disk oled_page_battery oled_page_input oled_page_rpi_power sf_rgb_led pwm_fan_speed"
 
 # --- DT overlays per variant ---
@@ -102,19 +108,18 @@ declare -A PM5_OVERLAYS
 PM5_OVERLAYS[base]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[mini]="sunfounder-pironman5mini.dtbo"
 PM5_OVERLAYS[max]="sunfounder-pironman5.dtbo"
-PM5_OVERLAYS[pro-max]="sunfounder-pironman5promax.dtbo"
+PM5_OVERLAYS[pro_max]="sunfounder-pironman5promax.dtbo"
 PM5_OVERLAYS[ups]=""
 
 # ============================================================
 if [ -n "$ARG_VARIANT" ]; then
     # --variant mode: skip interactive menu
     for prod in "${PRODUCTS[@]}"; do
-        IFS='|' read -r p_name p_variant p_branch p_part <<< "$prod"
+        IFS='|' read -r p_name p_variant p_branch <<< "$prod"
         if [ "$p_variant" = "$ARG_VARIANT" ]; then
             product_name="$p_name"
             variant="$p_variant"
             branch="$p_branch"
-            part_number="$p_part"
             break
         fi
     done
@@ -143,14 +148,37 @@ else
             exit 1
         }
         if [ "$choice" -ge 1 ] 2>/dev/null && [ "$choice" -le "$n" ] 2>/dev/null; then
-            echo ""
             selected=$((choice - 1))
             break
         fi
         echo "Invalid choice, please try again."
     done
 
-    IFS='|' read -r product_name variant branch part_number <<< "${PRODUCTS[$selected]}"
+    IFS='|' read -r product_name variant branch <<< "${PRODUCTS[$selected]}"
+fi
+
+# ============================================================
+# Package Versions
+# ============================================================
+PM_AUTO_BRANCH="v2"
+DASHBOARD_BRANCH="v2"
+SF_RPI_STATUS_BRANCH="main"
+
+GIT_REPO="https://github.com/sunfounder/"
+
+# Fetch pironman5 version from GitHub
+PIRONMAN5_VERSION="unknown"
+_fetch_version() {
+    local _vurl="https://raw.githubusercontent.com/sunfounder/pironman5/${1}/pironman5/version.py"
+    local _vraw=$(curl -fsSL "$_vurl" 2>/dev/null) || return 1
+    PIRONMAN5_VERSION=$(echo "$_vraw" | awk '/__version__/ { gsub(/[^0-9.]/, ""); print }')
+}
+_fetch_version "$branch"
+
+# Apply branch override from environment variable
+if [ -n "$BRANCH_OVERRIDE" ]; then
+    branch="$BRANCH_OVERRIDE"
+    _fetch_version "$branch"
 fi
 
 PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
@@ -161,22 +189,39 @@ if [ "$variant" = "ups" ]; then
     INSTALL_PIPOWER5=true
 fi
 
-installer_log_title "\nPreparing installation for ${product_name} (branch: ${branch})"
-if [ "$INSTALL_PIPOWER5" = true ]; then
-    installer_log_title "PiPower5 UPS module: enabled"
-fi
-
 # Helper: check if a peripheral is present
 has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
 
 # ============================================================
-# Package Versions
+# Install Report
 # ============================================================
-PM_AUTO_VERSION="2.0.1"
-DASHBOARD_VERSION="1.4.0"
-SF_RPI_STATUS_VERSION="1.1.8"
+echo ""
+# Detect git source (uses framework function, idempotent)
+installer_detect_git_source
 
-GIT_REPO="https://github.com/sunfounder/"
+echo "========================================="
+echo "  ${product_name}  v${PIRONMAN5_VERSION}"
+echo "  Branch: ${branch}"
+echo "  Source: ${INSTALLER_GIT_SOURCE}"
+if [ "$INSTALL_PIPOWER5" = true ]; then
+    echo "  PiPower5 UPS: enabled"
+fi
+echo "  ---------------------------------------"
+# Fetch component versions from GitHub
+_fetch_comp_version() {
+    local _url="https://raw.githubusercontent.com/sunfounder/${1}/${2}/$(echo ${1} | sed 's/-/_/g')/version.py"
+    local _raw=$(curl -fsSL "$_url" 2>/dev/null) || { echo "unknown"; return; }
+    echo "$_raw" | awk '/__version__/ { gsub(/[^0-9.]/, ""); print }'
+}
+PM_AUTO_VER=$(_fetch_comp_version "pm_auto" "$PM_AUTO_BRANCH")
+DASHBOARD_VER=$(_fetch_comp_version "pm_dashboard" "$DASHBOARD_BRANCH")
+SF_RPI_STATUS_VER=$(_fetch_comp_version "sf_rpi_status" "$SF_RPI_STATUS_BRANCH")
+
+echo "  pm_auto          ${PM_AUTO_BRANCH}  (v${PM_AUTO_VER})"
+echo "  pm_dashboard     ${DASHBOARD_BRANCH}  (v${DASHBOARD_VER})"
+echo "  sf_rpi_status    ${SF_RPI_STATUS_BRANCH}  (v${SF_RPI_STATUS_VER})"
+echo "========================================="
+echo ""
 
 # ============================================================
 # Build Dependency Sets (deduplicated)
@@ -260,7 +305,6 @@ fi
 # ============================================================
 
 # --- Clone repository ---
-TITLE "Installing ${product_name}"
 TITLE "Install build dependencies"
 RUN "DEBIAN_FRONTEND=noninteractive apt-get update" "Update package list"
 RUN "DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv git curl" "Install build dependencies"
@@ -334,9 +378,9 @@ RUN "${VENV_PIP} install --upgrade ${PIP_DEPS}" "Install Python packages"
 # --- Install Python source packages ---
 TITLE "Install Python packages from source"
 RUN "${VENV_PIP} install ./ " "Install pironman5"
-RUN "${VENV_PIP} install git+${GIT_REPO}pm_auto.git@${PM_AUTO_VERSION}" "Install pm_auto"
-RUN "${VENV_PIP} install git+${GIT_REPO}sf_rpi_status.git@${SF_RPI_STATUS_VERSION}" "Install sf_rpi_status"
-RUN "${VENV_PIP} install git+${GIT_REPO}pm_dashboard.git@${DASHBOARD_VERSION}" "Install pm_dashboard"
+RUN "${VENV_PIP} install git+${GIT_REPO}pm_auto.git@${PM_AUTO_BRANCH}" "Install pm_auto"
+RUN "${VENV_PIP} install git+${GIT_REPO}sf_rpi_status.git@${SF_RPI_STATUS_BRANCH}" "Install sf_rpi_status"
+RUN "${VENV_PIP} install git+${GIT_REPO}pm_dashboard.git@${DASHBOARD_BRANCH}" "Install pm_dashboard"
 
 # --- Install PiPower5 ---
 if [ "$INSTALL_PIPOWER5" = true ]; then
@@ -349,6 +393,11 @@ fi
 # --- Symlinks ---
 TITLE "Create symlinks"
 RUN "ln -sf /opt/pironman5/venv/bin/pironman5 /usr/local/bin/pironman5" "Create pironman5 symlink"
+
+# --- Shell completion ---
+TITLE "Setup shell completion"
+RUN "${VENV_PIP} install argcomplete" "Install argcomplete"
+RUN "/opt/pironman5/venv/bin/register-python-argcomplete pironman5 > /etc/bash_completion.d/pironman5" "Register bash completion"
 
 # --- Systemd auto-start ---
 if [ "$IS_CONTAINER" = false ]; then
@@ -412,6 +461,17 @@ if [ "$INSTALL_PIPOWER5" = true ]; then
     RUN "echo -n 'pipower5' > /opt/pironman5/.custom_module" "Write custom module"
 fi
 
+# --- Write dtoverlay to config.txt ---
+if [ "$IS_CONTAINER" = false ]; then
+    TITLE "Configure device tree overlays"
+    for overlay in $DT_OVERLAYS; do
+        DTOVERLAY_ADD "$overlay"
+    done
+    if [ "$INSTALL_PIPOWER5" = true ]; then
+        DTOVERLAY_ADD "sunfounder-pipower5.dtbo"
+    fi
+fi
+
 # ============================================================
 # Execute Installation
 # ============================================================
@@ -424,13 +484,28 @@ fi
 # ============================================================
 # Pro Max: Auto-launch browser
 # ============================================================
-if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro-max" ]; then
+if [ "$IS_CONTAINER" = false ] && [ "$variant" = "pro_max" ]; then
     echo ""
-    echo "Do you want the browser to open automatically on desktop startup?"
-    echo "This will install an autostart entry that launches the Pironman 5 dashboard in a browser."
-    read -p "Install auto-launch browser? [Y/n]: " install_browser < /dev/tty
+    read -p "Auto-launch dashboard on 4.3\" screen at startup? [Y/n]: " install_browser < /dev/tty
     if [[ "$install_browser" =~ ^[Yy]?$ ]]; then
-        /opt/pironman5/venv/bin/python3 ~/pironman5/pironman5/_launch_browser.py
+        # Create XDG autostart entry
+        AUTOSTART_DIR="${HOME}/.config/autostart"
+        mkdir -p "$AUTOSTART_DIR"
+        cat > "${AUTOSTART_DIR}/pironman5-dashboard.desktop" << EOF
+[Desktop Entry]
+Type=Application
+Name=Pironman 5 Dashboard
+Comment=Auto-launch Pironman 5 dashboard on the 4.3" screen
+Exec=/opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
+X-GNOME-Autostart-enabled=true
+EOF
+        chown "${USERNAME}:${USERNAME}" "${AUTOSTART_DIR}/pironman5-dashboard.desktop"
+        echo "Autostart entry created. Dashboard will launch on next desktop login."
+
+        # Try to launch immediately if desktop is available
+        if [ -n "$DISPLAY" ]; then
+            /opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
+        fi
     fi
 fi
 
