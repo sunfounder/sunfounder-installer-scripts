@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Pironman 5 Installer v2.0.0
-# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max, Pironman 5 NAS
+# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max, Pironman 5 NAS, Pironman 5 UPS
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
@@ -51,10 +51,10 @@ done
 # Validate --variant
 if [ -n "$ARG_VARIANT" ]; then
     case "$ARG_VARIANT" in
-        base|mini|max|pro-max|pro_max|nas)
+        base|mini|max|pro-max|pro_max|nas|ups)
             # Normalize pro-max to pro_max for internal key
             [ "$ARG_VARIANT" = "pro-max" ] && ARG_VARIANT="pro_max" ;;
-        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max, nas"; exit 1 ;;
+        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max, nas, ups"; exit 1 ;;
     esac
 fi
 
@@ -76,7 +76,7 @@ cat <<BANNER
 ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚══════╝
 
         Pironman 5 Installer v${VERSION}
-        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max | 5 NAS
+        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max | 5 NAS | 5 UPS
 
 BANNER
 echo -e "\033[0m"
@@ -93,6 +93,7 @@ PRODUCTS=(
     "Pironman 5 Max|max|1.3.x"
     "Pironman 5 Pro Max|pro_max|1.3.x"
     "Pironman 5 NAS|nas|1.3.x"
+    "Pironman 5 UPS|ups|1.3.x"
 )
 
 # --- Peripherals per variant ---
@@ -181,6 +182,11 @@ fi
 
 # Unified install: all dependencies pre-installed
 # All overlays copied below
+
+# UPS variant has pipower5 as a built-in module
+if [ "$variant" = "ups" ]; then
+    INSTALL_PIPOWER5=true
+fi
 
 # Helper: check if a peripheral is present
 has() { return 0; }
