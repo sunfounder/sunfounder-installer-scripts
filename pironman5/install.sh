@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# Pironman 5 Installer v1.0.1
-# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max, Pironman 5 UPS
+# Pironman 5 Installer v2.0.0
+# Supports: Pironman 5, Pironman 5 Mini, Pironman 5 Max, Pironman 5 Pro Max, Pironman 5 NAS
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh | sudo bash
@@ -10,7 +10,7 @@
 # (Safe to run directly — interactive prompts read from /dev/tty)
 # ============================================================
 
-VERSION="1.0.1"
+VERSION="2.0.0"
 
 # Source Installer framework — use local path when available (e.g. Docker build),
 # otherwise curl from GitHub.
@@ -51,10 +51,10 @@ done
 # Validate --variant
 if [ -n "$ARG_VARIANT" ]; then
     case "$ARG_VARIANT" in
-        base|mini|max|pro-max|pro_max|ups)
+        base|mini|max|pro-max|pro_max|nas)
             # Normalize pro-max to pro_max for internal key
             [ "$ARG_VARIANT" = "pro-max" ] && ARG_VARIANT="pro_max" ;;
-        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max, ups"; exit 1 ;;
+        *) echo "Invalid variant: $ARG_VARIANT. Valid: base, mini, max, pro-max, nas"; exit 1 ;;
     esac
 fi
 
@@ -76,7 +76,7 @@ cat <<BANNER
 ╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚══════╝
 
         Pironman 5 Installer v${VERSION}
-        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max | 5 UPS
+        Supports: 5 | 5 Mini | 5 Max | 5 Pro Max | 5 NAS
 
 BANNER
 echo -e "\033[0m"
@@ -92,7 +92,7 @@ PRODUCTS=(
     "Pironman 5 Mini|mini|1.3.x"
     "Pironman 5 Max|max|1.3.x"
     "Pironman 5 Pro Max|pro_max|1.3.x"
-    "Pironman 5 UPS|ups|1.3.x"
+    "Pironman 5 NAS|nas|1.3.x"
 )
 
 # --- Peripherals per variant ---
@@ -101,7 +101,6 @@ PM5_PERIPHERALS[base]="storage cpu network memory history log cpu_temperature gp
 PM5_PERIPHERALS[mini]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led"
 PM5_PERIPHERALS[max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit oled ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode gpio_fan_led pi5_power_button oled_sleep"
 PM5_PERIPHERALS[pro_max]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit ip_address mac_address oled oled_sleep ws2812 pwm_fan_speed gpio_fan_state gpio_fan_mode pi5_power_button"
-PM5_PERIPHERALS[ups]="storage cpu network memory history log cpu_temperature gpu_temperature temperature_unit delete_log_file debug_level restart_service reboot shutdown ip_address mac_address clear_history oled oled_sleep oled_page_mix oled_page_performance oled_page_ips oled_page_disk oled_page_battery oled_page_input oled_page_rpi_power sf_rgb_led pwm_fan_speed"
 
 # --- DT overlays per variant ---
 declare -A PM5_OVERLAYS
@@ -109,7 +108,6 @@ PM5_OVERLAYS[base]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[mini]="sunfounder-pironman5mini.dtbo"
 PM5_OVERLAYS[max]="sunfounder-pironman5.dtbo"
 PM5_OVERLAYS[pro_max]="sunfounder-pironman5promax.dtbo"
-PM5_OVERLAYS[ups]=""
 
 # ============================================================
 if [ -n "$ARG_VARIANT" ]; then
@@ -181,16 +179,11 @@ if [ -n "$BRANCH_OVERRIDE" ]; then
     _fetch_version "$branch"
 fi
 
-PERIPHERALS="${PM5_PERIPHERALS[$variant]}"
-DT_OVERLAYS="${PM5_OVERLAYS[$variant]}"
-
-# UPS variant has pipower5 as a built-in module
-if [ "$variant" = "ups" ]; then
-    INSTALL_PIPOWER5=true
-fi
+# Unified install: all dependencies pre-installed
+# All overlays copied below
 
 # Helper: check if a peripheral is present
-has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
+has() { return 0; }
 
 # ============================================================
 # Install Report
@@ -270,9 +263,6 @@ fi
 if has "pi5_power_button"; then
     PIP_DEPS="$PIP_DEPS evdev"
 fi
-if has "sf_rgb_led"; then
-    PIP_DEPS="$PIP_DEPS numpy"
-fi
 PIP_DEPS=$(echo "$PIP_DEPS" | tr ' ' '\n' | awk 'NF' | sort -u | tr '\n' ' ')
 
 # -- Groups --
@@ -280,7 +270,7 @@ GROUP_LIST="video influxdb"
 if has "ws2812"; then
     GROUP_LIST="$GROUP_LIST spi gpio"
 fi
-if has "oled" || has "sf_rgb_led"; then
+if has "oled"; then
     GROUP_LIST="$GROUP_LIST i2c"
 fi
 if has "gpio_fan_state" || has "vibration_switch"; then
@@ -429,8 +419,9 @@ if [ "$IS_CONTAINER" = false ]; then
     if [ -z "$OVERLAY_PATH" ]; then
         installer_log_failed "Device tree overlay directory not found. Checked: ${OVERLAY_SEARCH_PATHS}"
     else
-        for overlay in $DT_OVERLAYS; do
-            RUN "cp overlays/${overlay} ${OVERLAY_PATH}/" "Copy ${overlay}"
+        for overlay in overlays/*.dtbo; do
+            overlay_name=$(basename "$overlay")
+            RUN "cp ${overlay} ${OVERLAY_PATH}/" "Copy ${overlay_name}"
         done
         if [ "$INSTALL_PIPOWER5" = true ]; then
             RUN "curl -fsSL https://github.com/sunfounder/pipower5/raw/refs/heads/main/sunfounder-pipower5.dtbo -o ${OVERLAY_PATH}/sunfounder-pipower5.dtbo" "Copy PiPower5 device tree overlay"
@@ -464,8 +455,9 @@ fi
 # --- Write dtoverlay to config.txt ---
 if [ "$IS_CONTAINER" = false ]; then
     TITLE "Configure device tree overlays"
-    for overlay in $DT_OVERLAYS; do
-        DTOVERLAY_ADD "$overlay"
+    for overlay in overlays/*.dtbo; do
+            overlay_name=$(basename "$overlay")
+            DTOVERLAY_ADD "$overlay_name"
     done
     if [ "$INSTALL_PIPOWER5" = true ]; then
         DTOVERLAY_ADD "sunfounder-pipower5.dtbo"
