@@ -37,6 +37,7 @@ INSTALL_PIPOWER5=false
 IS_CONTAINER=false
 IS_PLAIN_TEXT=false
 ARG_VARIANT=""
+INSTALL_PLUGIN=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --pipower5) INSTALL_PIPOWER5=true ;;
@@ -44,9 +45,21 @@ while [ $# -gt 0 ]; do
         --plain-text) IS_PLAIN_TEXT=true ;;
         --variant=*) ARG_VARIANT="${1#*=}" ;;
         --variant) shift; ARG_VARIANT="$1" ;;
+        --plugin) shift; INSTALL_PLUGIN="$1"; INSTALL_PIPOWER5=true ;;
     esac
     shift
 done
+
+# --plugin mode: skip variant menu, detect from existing install
+if [ -n "$INSTALL_PLUGIN" ]; then
+    if [ -z "$ARG_VARIANT" ]; then
+        if [ -f /opt/pironman5/.variant ]; then
+            ARG_VARIANT=$(cat /opt/pironman5/.variant)
+        else
+            ARG_VARIANT="base"
+        fi
+    fi
+fi
 
 # Validate --variant
 if [ -n "$ARG_VARIANT" ]; then
@@ -299,6 +312,66 @@ fi
 # ============================================================
 # Build Declarative Install Commands (DSL)
 # ============================================================
+
+# --- Plugin-only install (incremental) ---
+if [ -n "$INSTALL_PLUGIN" ]; then
+    VENV_PIP="/opt/pironman5/venv/bin/pip3"
+    GIT_REPO="https://github.com/sunfounder/"
+    branch="${BRANCH_OVERRIDE:-1.3.x}"
+
+    if [ "$INSTALL_PLUGIN" = "pipower5" ]; then
+        echo ""
+        echo "========================================="
+        echo "  Plugin: PiPower 5 UPS"
+        echo "========================================="
+        echo ""
+
+        TITLE "Install PiPower5 pre-install script"
+        if [ -f /tmp/pironman5/scripts/setup_pipower5.sh ]; then
+            RUN "bash /tmp/pironman5/scripts/setup_pipower5.sh" "Run setup_pipower5.sh"
+        else
+            RUN "curl -fsSL https://raw.githubusercontent.com/sunfounder/pironman5/${branch}/scripts/setup_pipower5.sh -o /tmp/setup_pipower5.sh && bash /tmp/setup_pipower5.sh" "Download and run setup_pipower5.sh"
+        fi
+
+        TITLE "Install PiPower5 Python package"
+        RUN "${VENV_PIP} install git+${GIT_REPO}pipower5.git@main" "Install pipower5"
+        RUN "${VENV_PIP} install git+${GIT_REPO}spc.git" "Install spc"
+        RUN "ln -sf /opt/pironman5/venv/bin/pipower5 /usr/local/bin/pipower5" "Create pipower5 symlink"
+
+        TITLE "Setup PiPower5 groups"
+        RUN "getent group i2c > /dev/null 2>&1 || groupadd -r i2c; usermod -aG i2c pironman5" "Setup i2c group"
+        RUN "getent group pipower5 > /dev/null 2>&1 || groupadd -r pipower5; usermod -aG pipower5 pironman5" "Setup pipower5 group"
+
+        TITLE "Copy PiPower5 device tree overlay"
+        OVERLAY_SEARCH_PATHS="/boot/firmware/overlays /boot/overlays /boot/firmware/current/overlays"
+        OVERLAY_PATH=""
+        for p in $OVERLAY_SEARCH_PATHS; do
+            if [ -d "$p" ]; then OVERLAY_PATH="$p"; break; fi
+        done
+        if [ -n "$OVERLAY_PATH" ]; then
+            RUN "curl -fsSL https://github.com/sunfounder/pipower5/raw/refs/heads/main/sunfounder-pipower5.dtbo -o ${OVERLAY_PATH}/sunfounder-pipower5.dtbo" "Copy PiPower5 DT overlay"
+            DTOVERLAY_ADD "sunfounder-pipower5.dtbo"
+        fi
+
+        TITLE "Enable PiPower5 plugin"
+        RUN "mkdir -p /opt/pironman5" "Ensure work directory exists"
+        RUN "echo pipower5 >> /opt/pironman5/.custom_module" "Write custom module"
+
+        echo ""
+        echo "========================================="
+        echo "  PiPower 5 plugin installed!"
+        echo "  Restart to apply: sudo systemctl restart pironman5.service"
+        echo "========================================="
+        echo ""
+    fi
+
+    if [ "$IS_PLAIN_TEXT" = true ]; then
+        installer_install --plain-text
+    else
+        installer_install
+    fi
+    exit 0
+fi
 
 # --- Clone repository ---
 TITLE "Install build dependencies"
