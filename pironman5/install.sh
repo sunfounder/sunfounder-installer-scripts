@@ -157,16 +157,19 @@ fi
 # ============================================================
 # Package Versions
 # ============================================================
+
+# Detect git source (uses framework function, idempotent)
+installer_detect_git_source
+GIT_REPO="${INSTALLER_GIT_REPO_URL}"
+
 PM_AUTO_BRANCH="v2"
 DASHBOARD_BRANCH="v2"
 SF_RPI_STATUS_BRANCH="main"
 
-GIT_REPO="https://github.com/sunfounder/"
-
-# Fetch pironman5 version from GitHub
+# Fetch pironman5 version from remote
 PIRONMAN5_VERSION="unknown"
 _fetch_version() {
-    local _vurl="https://raw.githubusercontent.com/sunfounder/pironman5/${1}/pironman5/version.py"
+    local _vurl="${INSTALLER_GIT_RAW_URL}pironman5/${1}/pironman5/version.py"
     local _vraw=$(curl -fsSL "$_vurl" 2>/dev/null) || return 1
     PIRONMAN5_VERSION=$(echo "$_vraw" | awk '/__version__/ { gsub(/[^0-9.]/, ""); print }')
 }
@@ -188,9 +191,6 @@ has() { [[ " $PERIPHERALS " == *" $1 "* ]]; }
 # Install Report
 # ============================================================
 echo ""
-# Detect git source (uses framework function, idempotent)
-installer_detect_git_source
-
 echo "========================================="
 echo "  ${product_name}  v${PIRONMAN5_VERSION}"
 echo "  Branch: ${branch}"
@@ -199,9 +199,9 @@ if [ "$INSTALL_PIPOWER5" = true ]; then
     echo "  PiPower5 UPS: enabled"
 fi
 echo "  ---------------------------------------"
-# Fetch component versions from GitHub
+# Fetch component versions from remote
 _fetch_comp_version() {
-    local _url="https://raw.githubusercontent.com/sunfounder/${1}/${2}/$(echo ${1} | sed 's/-/_/g')/version.py"
+    local _url="${INSTALLER_GIT_RAW_URL}${1}/${2}/$(echo ${1} | sed 's/-/_/g')/version.py"
     local _raw=$(curl -fsSL "$_url" 2>/dev/null) || { echo "unknown"; return; }
     echo "$_raw" | awk '/__version__/ { gsub(/[^0-9.]/, ""); print }'
 }
@@ -300,7 +300,8 @@ RUN "DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-venv 
 
 TITLE "Clone pironman5 repository"
 RUN "rm -rf ${HOME}/pironman5" "Remove existing pironman5 directory"
-RUN "git clone -b ${branch} --depth=1 ${GIT_REPO}pironman5 ${HOME}/pironman5" "Clone pironman5"
+CD "${HOME}"
+CLONE "pironman5" "${branch}"
 if [ "$IS_CONTAINER" = false ]; then
     RUN "chown -R ${USERNAME}:${USERNAME} ${HOME}/pironman5" "Set repo ownership"
 fi
@@ -422,7 +423,7 @@ if [ "$IS_CONTAINER" = false ]; then
             RUN "cp overlays/${overlay} ${OVERLAY_PATH}/" "Copy ${overlay}"
         done
         if [ "$INSTALL_PIPOWER5" = true ]; then
-            RUN "curl -fsSL https://github.com/sunfounder/pipower5/raw/refs/heads/main/sunfounder-pipower5.dtbo -o ${OVERLAY_PATH}/sunfounder-pipower5.dtbo" "Copy PiPower5 device tree overlay"
+            RUN "curl -fsSL ${INSTALLER_GIT_RAW_URL}pipower5/main/sunfounder-pipower5.dtbo -o ${OVERLAY_PATH}/sunfounder-pipower5.dtbo" "Copy PiPower5 device tree overlay"
         fi
     fi
 fi
