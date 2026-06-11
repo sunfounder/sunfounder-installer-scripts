@@ -287,7 +287,11 @@ installer_install() {
             installer_run "${command[1]}" "${command[2]}"
             command_count=$((command_count+1))
         elif [ "${command[0]}" == "CD" ]; then
-            cd "${command[1]}"
+            cd "${command[1]}" || {
+                installer_log_failed "cd ${command[1]}"
+                INSTALLER_ERROR_HAPPENED=true
+                INSTALLER_ERROR_LOGS+="\n  cd: ${command[1]}: No such file or directory\n"
+            }
         elif [ "${command[0]}" == "CLONE" ]; then
             installer_git_clone "${command[1]}" "${command[2]}"
         elif [ "${command[0]}" == "DTOVERLAY" ]; then
