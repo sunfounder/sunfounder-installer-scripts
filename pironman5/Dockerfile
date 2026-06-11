@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 ARG VARIANT=base
 ARG PIPOWER5=false
 
-RUN apt-get update && apt-get install -y curl sudo util-linux
+RUN apt-get update && apt-get install -y curl sudo util-linux git
 
 COPY pironman5/install.sh /tmp/install.sh
 COPY tools /tmp/installer-tools
