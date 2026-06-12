@@ -494,7 +494,7 @@ EOF
 
         # Try to launch immediately if desktop is available
         if [ -n "$DISPLAY" ]; then
-            /opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()"
+            /opt/pironman5/venv/bin/python3 -c "from pironman5._launch_browser import run; run()" || true
         fi
     fi
 fi
