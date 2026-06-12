@@ -5,6 +5,10 @@ ARG PIPOWER5=false
 
 RUN apt-get update && apt-get install -y curl sudo util-linux git
 
+# Ensure HOME directory exists (required by installer's CD commands)
+RUN mkdir -p /root
+ENV HOME=/root
+
 COPY pironman5/install.sh /tmp/install.sh
 COPY tools /tmp/installer-tools
 
