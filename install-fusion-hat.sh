@@ -1,63 +1,26 @@
 #!/bin/bash
+# ── Thin adapter ─────────────────────────────────────────────────────────────
+# The Fusion HAT installer lives in the fusion-hat repository. This file only
+# forwards to it, so that existing documentation links keep working while the
+# install logic is maintained in exactly one place.
+#
+#   curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-fusion-hat.sh | sudo bash
+#
+# To install/test a specific branch of fusion-hat:
+#   FUSION_HAT_BRANCH=<branch> sudo -E bash install-fusion-hat.sh
+# ─────────────────────────────────────────────────────────────────────────────
+set -e
 
-# ── Branch overrides (set via environment variable to test feature branches) ──
-#   FUSION_HAT_BRANCH=refactor/remove-eeprom sudo bash install-fusion-hat.sh
-FUSION_HAT_BRANCH="${FUSION_HAT_BRANCH:-main}"
-INSTALLER_BRANCH="${INSTALLER_BRANCH:-main}"
+# Default to the release branch (the fusion-hat repository has no "main" branch)
+FUSION_HAT_BRANCH="${FUSION_HAT_BRANCH:-v1}"
+INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/fusion-hat/${FUSION_HAT_BRANCH}/install.sh"
 
-INSTALLER_URL="https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/refs/heads/${INSTALLER_BRANCH}/tools/installer_1.1.0.sh"
+TMP_SCRIPT="$(mktemp /tmp/fusion-hat-install.XXXXXX)"
+trap 'rm -f "$TMP_SCRIPT"' EXIT
 
-# Source Installer
-curl -fsSL $INSTALLER_URL -o installer.sh
-if [ $? -ne 0 ]; then
-    log_failed "Network error, please check your internet connection."
+if ! curl -fsSL "$INSTALLER_URL" -o "$TMP_SCRIPT"; then
+    echo "Network error: failed to download ${INSTALLER_URL}"
     exit 1
 fi
-source installer.sh
-rm installer.sh
 
-APT_INSTALL_LIST=(
-    "git"
-    "python3"
-    "raspi-config"
-    "python3-pip"
-    "i2c-tools"
-    "espeak"
-    "libsdl2-dev"
-    "libsdl2-mixer-dev"
-    "portaudio19-dev"
-    "sox"
-    "libttspico-utils"
-    "dkms"
-)
-
-TITLE "Install Fusion Hat Python Library\n"
-TITLE "Install dependencies"
-RUN "apt-get update" "Update apt"
-RUN "apt-get install -y ${APT_INSTALL_LIST[*]}" "Install apt dependencies"
-
-TITLE "Install fusion-hat library"
-CD "$HOME/" "Change to home directory"
-RUN "rm -rf $HOME/fusion-hat" "Remove existing fusion-hat library"
-RUN "git clone --depth=1 --branch ${FUSION_HAT_BRANCH} https://github.com/sunfounder/fusion-hat.git" "Clone fusion-hat library (${FUSION_HAT_BRANCH})"
-RUN "chown -R $USERNAME:$USERNAME $HOME/fusion-hat" "Change ownership of fusion-hat library to $USERNAME"
-
-TITLE "Install fusion-hat driver"
-CD "$HOME/fusion-hat/driver" "Change to driver directory"
-RUN "make all" "Compile driver"
-RUN "make install" "Install driver"
-RUN "make clean" "Clean driver"
-RUN 'config_txt_set "$INSTALLER_CONFIG_TXT_FILE" "dtoverlay=sunfounder-fusionhat"' "enable driver in config.txt"
-
-TITLE "Install fusion-hat python library"
-CD "$HOME/fusion-hat" "Change to fusion-hat directory"
-RUN "pip3 install . --break-system-packages" "Install fusion-hat library"
-RUN "pip3 uninstall -y RPi.GPIO --break-system-packages" "Uninstall RPi.GPIO"
-RUN "register-python-argcomplete -s bash fusion_hat > /etc/bash_completion.d/fusion_hat" "Install tab completion"
-
-TITLE "Setup audio"
-RUN "sudo bash $HOME/fusion-hat/fusion_hat/scripts/setup_fusion_hat_audio.sh --skip-test" "Setup audio"
-
-installer_install
-
-installer_prompt_reboot "Remember to run 'fusion_hat speaker setup' to enable speaker after reboot."
+FUSION_HAT_BRANCH="$FUSION_HAT_BRANCH" bash "$TMP_SCRIPT" "$@"
