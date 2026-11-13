@@ -318,6 +318,13 @@ installer_install() {
 
 installer_prompt_reboot() {
     # prompt reboot - read from /dev/tty to avoid conflict with pipe input
+    # Non-interactive runs (CI, `curl ... | sudo bash -s -- <args>`, setsid,
+    # systemd units) have no usable /dev/tty - reading it fails immediately
+    # and the retry loop below would spin forever. Skip the prompt instead.
+    if ! { true >/dev/tty; } 2>/dev/null; then
+        echo "Non-interactive shell (no /dev/tty): skipping reboot prompt."
+        return 0
+    fi
     read -p "Do you want to reboot now? (y/n) " -n 1 -r < /dev/tty
     while true; do
         echo ""
