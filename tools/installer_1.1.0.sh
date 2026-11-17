@@ -224,15 +224,52 @@ CLONE() {
 
 DTOVERLAY_ADD() {
     # DTOVERLAY_ADD overlay_name
-    # Checks if dtoverlay already exists in config.txt; if not, queues a RUN to add it.
+    # Queues "dtoverlay=<name>" for config.txt. Whether the line is already
+    # present can only be decided when the installer runs: the DSL is built
+    # before installer_init(), which is where INSTALLER_CONFIG_TXT_FILE gets
+    # resolved. Checking here would always see an empty path and add the line
+    # again on every reinstall.
     local overlay="$1"
     local name="${overlay%.dtbo}"
-    if [ -n "$INSTALLER_CONFIG_TXT_FILE" ] && grep -q "^dtoverlay=${name}" "$INSTALLER_CONFIG_TXT_FILE" 2>/dev/null; then
-        installer_add_command TITLE "dtoverlay=${name} already present in config.txt"
-    else
-        installer_add_command DTOVERLAY "$name" "Add dtoverlay=${name} to config.txt"
-        INSTALLER_COMMANDS_COUNT=$((INSTALLER_COMMANDS_COUNT+1))
+    installer_add_command DTOVERLAY "$name" "Add dtoverlay=${name} to config.txt"
+    INSTALLER_COMMANDS_COUNT=$((INSTALLER_COMMANDS_COUNT+1))
+}
+
+installer_dtoverlay_apply() {
+    # installer_dtoverlay_apply overlay_name success_message
+    # Adds the overlay to config.txt at most once. Duplicate lines left behind
+    # by earlier installers are collapsed to the first occurrence, so rerunning
+    # the installer also repairs an already affected config.txt.
+    local name="$1"
+    local info="$2"
+    local pattern="^dtoverlay=${name}([[:space:],]|\$)"
+
+    if [ -z "$INSTALLER_CONFIG_TXT_FILE" ]; then
+        installer_log_failed "config.txt not found, skipping dtoverlay=${name}"
+        INSTALLER_ERROR_HAPPENED=true
+        INSTALLER_ERROR_LOGS+="\n  dtoverlay=${name}: config.txt not found\n"
+        return 0
     fi
+
+    local count=0
+    count=$(grep -cE "$pattern" "$INSTALLER_CONFIG_TXT_FILE" 2>/dev/null) || count=0
+    if [ "${count:-0}" -gt 0 ]; then
+        if [ "$count" -gt 1 ]; then
+            local tmp_file
+            tmp_file=$(mktemp)
+            awk -v pat="$pattern" '$0 ~ pat { if (seen++) next } { print }' \
+                "$INSTALLER_CONFIG_TXT_FILE" > "$tmp_file"
+            cat "$tmp_file" > "$INSTALLER_CONFIG_TXT_FILE"
+            rm -f "$tmp_file"
+            installer_log_success "Removed $((count - 1)) duplicate dtoverlay=${name} line(s)"
+        else
+            installer_log_title "dtoverlay=${name} already present in config.txt"
+        fi
+        return 0
+    fi
+
+    echo "dtoverlay=${name}" >> "$INSTALLER_CONFIG_TXT_FILE"
+    installer_log_success "$info"
 }
 
 installer_init() {
@@ -295,8 +332,7 @@ installer_install() {
         elif [ "${command[0]}" == "CLONE" ]; then
             installer_git_clone "${command[1]}" "${command[2]}"
         elif [ "${command[0]}" == "DTOVERLAY" ]; then
-            echo "dtoverlay=${command[1]}" >> "$INSTALLER_CONFIG_TXT_FILE"
-            installer_log_success "${command[2]}"
+            installer_dtoverlay_apply "${command[1]}" "${command[2]}"
             command_count=$((command_count+1))
         fi
         if [ "$INSTALLER_PLAIN_TEXT" != true ]; then
