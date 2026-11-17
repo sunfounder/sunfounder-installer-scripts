@@ -1,60 +1,32 @@
-# Pironman 5 Installer
+# Pironman 5 Installer (deprecated)
 
-One-command installer for SunFounder Pironman 5 series HATs on Raspberry Pi.
-
-## Quick Install
+**This directory is deprecated.** The Pironman 5 installer lives with the product, on the current `v1` branch of that repository (`1.3.x` is deprecated):
 
 ```bash
-curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh" | sudo bash
+curl -sSL "https://raw.githubusercontent.com/sunfounder/pironman5/v1/install.sh" | sudo bash
+# China mirror
+curl -sSL "https://gitee.com/sunfounder/pironman5/raw/v1/install.sh" | sudo bash -s -- --cn
 ```
 
-With options:
+- Product repository: <https://github.com/sunfounder/pironman5>
+- Variants, flags and troubleshooting: see that repository's `README.md`.
 
-```bash
-# With PiPower5 UPS module
-curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh" | sudo bash -s -- --pipower5
+## Why is this still here?
 
-# Skip menu, select variant directly
-curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh" | sudo bash -s -- --variant ups
-```
+`pironman5 update` on released versions still downloads
+`pironman5/install.sh` from this repository. `install.sh` here is now a thin
+forwarder: it prints a deprecation notice, downloads the product installer from
+the URL above and runs it with the same arguments. It carries no logic of its
+own, so it cannot drift from the real installer again.
 
-## Ubuntu Users
+Because the forwarder points at `v1`, an installation that was still on
+`1.3.x` is moved to the current line when it runs `pironman5 update`.
 
-Ubuntu's `sudo` uses `use_pty` by default, which breaks interactive input when piping.  
-If you see **`Input/output error`** or the menu doesn't respond, download the script first:
+The `Dockerfile` in this directory still builds with the forwarder and the
+framework in `tools/`.
 
-```bash
-curl -sSL "https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/pironman5/install.sh" -o install.sh
-sudo bash install.sh
-rm install.sh
-```
+## Repository policy
 
-## Supported Variants
-
-| Variant | `--variant` | Description |
-|---|---|---|
-| Pironman 5 | `base` | OLED, RGB LED, PWM Fan |
-| Pironman 5 Mini | `mini` | No OLED, RGB LED, PWM Fan |
-| Pironman 5 Max | `max` | OLED, RGB LED, PWM+GPIO Fan |
-| Pironman 5 Pro Max | `pro-max` | OLED, M.2 NVMe slot |
-| Pironman 5 UPS | `ups` | OLED, UPS battery |
-| Pironman 5 NAS | `nas` | OLED, 2.5G Ethernet, MCU button |
-
-## CLI Flags
-
-| Flag | Description |
-|---|---|
-| `--variant <key>` | Skip menu, select variant directly |
-| `--pipower5` | Enable PiPower5 UPS module |
-| `--container` | Container/Docker mode |
-| `--plain-text` | Disable color output |
-
-## Service Management
-
-```bash
-sudo systemctl restart pironman5.service   # apply config changes
-sudo systemctl stop pironman5.service
-journalctl -xefu pironman5.service          # live logs
-```
-
-Config: `/opt/pironman5/config.json`
+Installers belong in the repository of the product they install. This
+repository keeps shared tooling (`tools/`, used by the product installers) and
+installers for products that have no repository of their own.
