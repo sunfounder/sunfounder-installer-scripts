@@ -34,9 +34,6 @@ curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scri
 # Install PiCar-X V4
 curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-picar-x-v4.sh | sudo bash
 
-# Install TFT 3.5 inch IPS TFT display
-curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/install-tft35ips.sh | sudo bash
-
 # Upgrade AI Fusion Lab Kit from 0.0.1 to 0.1.0
 curl -sSL https://raw.githubusercontent.com/sunfounder/sunfounder-installer-scripts/main/ai-fusion-lab-kit-upgrade-0.0.1-to-0.1.0.sh | sudo bash
 
